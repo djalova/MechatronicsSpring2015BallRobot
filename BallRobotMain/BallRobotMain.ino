@@ -16,11 +16,14 @@ const int MAX_HEIGHT = 200;
 const int GAME_BALL_SIG = 2;
 const int FOUL_BALL_SIG = 1;
 
+
+//NOTE: AVOID USING PINS 50-53 (FOR MEGA). These pins are ICSP and will be used up by the PixyCam.
+//NOTE: AVOID USING PINS 10-13 (FOR UNO).
 // output pins for drive wheels
-const int LEFT_WHEEL_PIN_1 = 8;
-const int LEFT_WHEEL_PIN_2 = 9;
-const int RIGHT_WHEEL_PIN_1 = 10;
-const int RIGHT_WHEEL_PIN_2 = 11;
+const int LEFT_WHEEL_PIN_1 = 6;
+const int LEFT_WHEEL_PIN_2 = 7;
+const int RIGHT_WHEEL_PIN_1 = 8;
+const int RIGHT_WHEEL_PIN_2 = 9;
 
 // output pins for brush
 const int BRUSH_PIN_1 = 5;
