@@ -38,73 +38,92 @@ void setup() {
 }
 
 void loop() {
-  Block *block = getPixyDistance();
+
+  Block* block = getPixyDistance();
+
   if (block != NULL) {
-    Serial.print(block->width);
-    Serial.print(block->height);
-    if (block->width < MAX_WIDTH / 2) {
-      turnRobotLeft();
-    } else {
-      turnRobotRight(); 
+
+    //Serial.print(block->width);
+    //Serial.print(block->height);
+
+    if (block->x < MAX_WIDTH / 3) {
+      // Turn right if ball is in the leftmost third of its vision
+      turnRobotRight();
+      Serial.println("Turning right");
     }
-  } else {
-     turnRobotForward();
+    else if (block->x > (2 / 3.0 * MAX_WIDTH) ) {
+      // Turn left if ball is in the rightmost third
+      turnRobotLeft();
+      Serial.println("Turning left");
+    } else {
+      // Go straight if ball is in the middle third
+      turnRobotForward();
+      Serial.println("Moving forward");
+    }
   }
-  turnBrushForward();
+
+  else {
+    // Robot should rotate and scan for balls
+  }
+  
+  // Needs a slight delay for some reason. A delay of 10ms makes it
+  // rotate for too long. Need to play with these values.
+  delay(5);
+  //turnBrushForward();
+
+  //testMotorFunctions();
 }
 
 // gets closest block that is a game ball
 Block* getPixyDistance() {
   int i = 0;
-  char buf[32]; 
-  
+  char buf[32];
+  Block* maxBlock = NULL;
+
   // grab blocks!
   uint16_t blocks = pixy.getBlocks();
-  
-  Block* maxBlock = NULL;
-  
+  unsigned int maxArea = MAX_WIDTH * MAX_HEIGHT;
   // If there are detect blocks, print them!
+
   if (blocks)
   {
     sprintf(buf, "Detected %d:\n", blocks);
-    Serial.print(buf);
-    
+    //    Serial.print(buf);
+
     // find maximum block size, that is a game ball
-    int maxArea = MAX_WIDTH * MAX_HEIGHT;
-    
-    for (int j=0; j<blocks; j++)
+    for (int j = 0; j < blocks; j++)
     {
       Block block = pixy.blocks[j];
-      sprintf(buf, "  block %d: ", j);
-      Serial.print(buf);
+      //sprintf(buf, "  block %d: ", j);
+      //Serial.println(buf);
       if (block.signature == GAME_BALL_SIG) {
-        Serial.print(" game ball ");
+        //Serial.println(" game ball ");
         int ballArea = block.width * block.height;
         if (ballArea < maxArea) {
           maxArea = ballArea;
           maxBlock = &block;
         }
       } else if (block.signature == FOUL_BALL_SIG) {
-        Serial.print(" foul ball ");
+        //        Serial.print(" foul ball ");
       }
-      pixy.blocks[j].print();
+      //      pixy.blocks[j].print();
     }
   }
-  return maxBlock; 
+  return maxBlock;
 }
 
-void turnRobotLeft() {
+void turnRobotRight() {
   digitalWrite(LEFT_WHEEL_PIN_1, LOW);
-  digitalWrite(LEFT_WHEEL_PIN_2, LOW);
+  digitalWrite(LEFT_WHEEL_PIN_2, HIGH);
   digitalWrite(RIGHT_WHEEL_PIN_1, HIGH);
   digitalWrite(RIGHT_WHEEL_PIN_2, LOW);
 }
 
-void turnRobotRight() {
+void turnRobotLeft() {
   digitalWrite(LEFT_WHEEL_PIN_1, HIGH);
   digitalWrite(LEFT_WHEEL_PIN_2, LOW);
   digitalWrite(RIGHT_WHEEL_PIN_1, LOW);
-  digitalWrite(RIGHT_WHEEL_PIN_2, LOW);
+  digitalWrite(RIGHT_WHEEL_PIN_2, HIGH);
 }
 
 void turnRobotForward() {
