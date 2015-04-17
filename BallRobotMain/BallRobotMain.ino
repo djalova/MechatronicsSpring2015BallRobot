@@ -149,3 +149,14 @@ void turnBrushBack() {
   digitalWrite(BRUSH_PIN_1, LOW);
   digitalWrite(BRUSH_PIN_2, HIGH);
 }
+
+void testMotorFunctions() {
+  turnRobotForward();
+  delay(3000);
+  turnRobotLeft();
+  delay(3000);
+  turnRobotRight();
+  delay(3000);
+  turnRobotBack();
+  delay(3000);
+}
