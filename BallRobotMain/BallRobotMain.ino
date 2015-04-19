@@ -28,14 +28,24 @@ const int RIGHT_WHEEL_PIN_1 = 8;
 const int RIGHT_WHEEL_PIN_2 = 9;
 
 // output pins for brush
-const int BRUSH_PIN_1 = 5;
-const int BRUSH_PIN_2 = 6;
+const int BRUSH_PIN_1 = 4;
+const int BRUSH_PIN_2 = 5;
+
+// pins for left/right swithes to determine if hitting walls
+const int LEFT_SWITCH_PIN = 2;
+const int RIGHT_SWITCH_PIN = 3;
+
+// pin for ir sensor (if needed)
+// const int IR_PIN = 1;
 
 // timeout to go to scoring state
-const int SCORE_TIMEOUT = 30;
-
+const float SCORE_TIMEOUT = 30.0;
 // time to dump balls into goal
-const int SCORE_TIME = 7;
+const float SCORE_TIME = 5.0;
+
+// time to avoid wall
+const float WALL_BACKUP_TIME = 2.0;
+const float WALL_TURN_TIME = 1.0;
 
 int numBallsCollected = 0;
 unsigned long startTime = millis();
@@ -49,6 +59,8 @@ void setup() {
   pinMode(RIGHT_WHEEL_PIN_2, OUTPUT);
   pinMode(BRUSH_PIN_1, OUTPUT);
   pinMode(BRUSH_PIN_2, OUTPUT);
+  pinMode(LEFT_SWITCH_PIN, INPUT_PULLUP);
+  pinMode(RIGHT_SWITCH_PIN, INPUT_PULLUP);
 }
 
 void loop() {
@@ -86,9 +98,19 @@ void loop() {
   }
   
   // Turn towards goal if timed out
-  if (millis() - startTime >= SCORE_TIMEOUT && numBallsCollected >= 0) {
+  if (millis() - startTime >= SCORE_TIMEOUT * 1000 && numBallsCollected >= 0) {
     scoreBalls();
     startTime = millis();
+    numBallsCollected = 0;
+  }
+  
+  // Avoid wall if switch was triggered
+  if (digitalRead(LEFT_SWITCH_PIN) == LOW) {
+    avoidWallBack();
+    avoidWallRight();
+  } else if (digitalRead(RIGHT_SWITCH_PIN == LOW)) {
+    avoidWallBack();
+    avoidWallLeft();
   }
   
   // Needs a slight delay for some reason. A delay of 10ms makes it
@@ -134,6 +156,27 @@ Block* getMaxBlock(int inputSig) {
   return maxBlock;
 }
 
+// functions to avoid wall
+void avoidWallBack() {
+  unsigned long avoidStartTime = millis();
+  while (millis() - avoidStartTime <= WALL_BACKUP_TIME * 1000) {
+    turnRobotBack();
+  }
+}
+void avoidWallLeft() {
+  unsigned long avoidStartTime = millis();
+  while (millis() - avoidStartTime <= WALL_TURN_TIME * 1000) {
+    turnRobotLeft();
+  }
+}
+void avoidWallRight() {
+  unsigned long avoidStartTime = millis();
+  while (millis() - avoidStartTime <= WALL_TURN_TIME * 1000) {
+    turnRobotRight();
+  }
+}
+
+// score balls into goal
 void scoreBalls() {
   // rotate until robot finds goal
   while (getMaxBlock(GOAL_SIG) == NULL) {
@@ -149,7 +192,7 @@ void scoreBalls() {
   }
   // turn brush back to score ball
   int scoreStartTime = millis();
-  while (millis() - scoreStartTime <= SCORE_TIME) {
+  while (millis() - scoreStartTime <= SCORE_TIME * 1000) {
     turnBrushBack(); 
   }
 }
