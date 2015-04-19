@@ -39,13 +39,13 @@ const int RIGHT_SWITCH_PIN = 3;
 // const int IR_PIN = 1;
 
 // timeout to go to scoring state
-const float SCORE_TIMEOUT = 30.0;
+const unsigned int SCORE_TIMEOUT = 30000;
 // time to dump balls into goal
-const float SCORE_TIME = 5.0;
+const unsigned int SCORE_TIME = 7000;
 
-// time to avoid wall
-const float WALL_BACKUP_TIME = 2.0;
-const float WALL_TURN_TIME = 1.0;
+// time to backup and turn for avoiding wall
+const unsigned int WALL_BACKUP_TIME = 2000;
+const float WALL_TURN_TIME = 1000;
 
 int numBallsCollected = 0;
 unsigned long startTime = millis();
@@ -98,7 +98,7 @@ void loop() {
   }
   
   // Turn towards goal if timed out
-  if (millis() - startTime >= SCORE_TIMEOUT * 1000 && numBallsCollected >= 0) {
+  if (millis() - startTime >= SCORE_TIMEOUT && numBallsCollected >= 0) {
     scoreBalls();
     startTime = millis();
     numBallsCollected = 0;
@@ -159,19 +159,19 @@ Block* getMaxBlock(int inputSig) {
 // functions to avoid wall
 void avoidWallBack() {
   unsigned long avoidStartTime = millis();
-  while (millis() - avoidStartTime <= WALL_BACKUP_TIME * 1000) {
+  while (millis() - avoidStartTime <= WALL_BACKUP_TIME) {
     turnRobotBack();
   }
 }
 void avoidWallLeft() {
   unsigned long avoidStartTime = millis();
-  while (millis() - avoidStartTime <= WALL_TURN_TIME * 1000) {
+  while (millis() - avoidStartTime <= WALL_TURN_TIME) {
     turnRobotLeft();
   }
 }
 void avoidWallRight() {
   unsigned long avoidStartTime = millis();
-  while (millis() - avoidStartTime <= WALL_TURN_TIME * 1000) {
+  while (millis() - avoidStartTime <= WALL_TURN_TIME) {
     turnRobotRight();
   }
 }
@@ -192,7 +192,7 @@ void scoreBalls() {
   }
   // turn brush back to score ball
   int scoreStartTime = millis();
-  while (millis() - scoreStartTime <= SCORE_TIME * 1000) {
+  while (millis() - scoreStartTime <= SCORE_TIME) {
     turnBrushBack(); 
   }
 }
