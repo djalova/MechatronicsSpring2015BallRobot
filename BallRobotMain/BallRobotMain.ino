@@ -4,8 +4,8 @@
 
 Pixy pixy;
 
-// threshold for width/height of block detected by Pixy
-const int BLOCK_THRESHOLD = 15;
+// threshold for rotating brush
+const int BRUSH_BLOCK_THRESHOLD = 40;
 
 // max width and height of image returned by Pixy
 const int MAX_WIDTH = 320;
@@ -15,9 +15,9 @@ const int MAX_HEIGHT = 200;
 // game ball is green, foul ball is blue
 const int GAME_BALL_SIG = 2;
 const int FOUL_BALL_SIG = 1;
-// signature of wall and goal
-const int WALL_SIG = 3;
-const int GOAL_SIG = 4;
+// signature of goal and wall
+const int GOAL_SIG = 3;
+const int WALL_SIG = 4;
 
 //NOTE: AVOID USING PINS 50-53 (FOR MEGA). These pins are ICSP and will be used up by the PixyCam.
 //NOTE: AVOID USING PINS 10-13 (FOR UNO).
@@ -31,6 +31,15 @@ const int RIGHT_WHEEL_PIN_2 = 9;
 const int BRUSH_PIN_1 = 5;
 const int BRUSH_PIN_2 = 6;
 
+// timeout to go to scoring state
+const int SCORE_TIMEOUT = 30;
+
+// time to dump balls into goal
+const int SCORE_TIME = 7;
+
+int numBallsCollected = 0;
+unsigned long startTime = millis();
+
 void setup() {
   Serial.begin(9600);
   pixy.init();
@@ -42,10 +51,9 @@ void setup() {
   pinMode(BRUSH_PIN_2, OUTPUT);
 }
 
-/*
 void loop() {
 
-  Block* block = getPixyDistance();
+  Block* block = getMaxBlock(GAME_BALL_SIG);
 
   if (block != NULL) {
 
@@ -66,12 +74,21 @@ void loop() {
       turnRobotForward();
       Serial.println("Moving forward");
     }
-  }
 
-  else {
+    // Spin brush if ball is reasonably close    
+    if (block->width > BRUSH_BLOCK_THRESHOLD && block->height > BRUSH_BLOCK_THRESHOLD) {
+      turnBrushForward();
+    }
+  } else {
     // Robot should rotate and scan for balls
     rotateRobot();
     Serial.println("Rotating robot");
+  }
+  
+  // Turn towards goal if timed out
+  if (millis() - startTime >= SCORE_TIMEOUT && numBallsCollected >= 0) {
+    scoreBalls();
+    startTime = millis();
   }
   
   // Needs a slight delay for some reason. A delay of 10ms makes it
@@ -80,14 +97,9 @@ void loop() {
   //turnBrushForward();
 
   //testMotorFunctions();
-}*/
-
-void loop(){
-  rotateRobot();  
 }
 
-// gets closest block that is a game ball
-Block* getPixyDistance() {
+Block* getMaxBlock(int inputSig) {
   int i = 0;
   char buf[32];
   Block* maxBlock = NULL;
@@ -108,20 +120,38 @@ Block* getPixyDistance() {
       Block block = pixy.blocks[j];
       //sprintf(buf, "  block %d: ", j);
       //Serial.println(buf);
-      if (block.signature == GAME_BALL_SIG) {
-        //Serial.println(" game ball ");
+      if (block.signature == inputSig) {
+        //Serial.println(inputSig);
         int ballArea = block.width * block.height;
         if (ballArea < maxArea) {
           maxArea = ballArea;
           maxBlock = &block;
         }
-      } else if (block.signature == FOUL_BALL_SIG) {
-        //        Serial.print(" foul ball ");
       }
       //      pixy.blocks[j].print();
     }
   }
   return maxBlock;
+}
+
+void scoreBalls() {
+  // rotate until robot finds goal
+  while (getMaxBlock(GOAL_SIG) == NULL) {
+    rotateRobot();
+  }
+  // go forward until goal is out of view
+  while (getMaxBlock(GOAL_SIG) != NULL) {
+    turnRobotForward();
+  }
+  // rotate until robot finds goal again
+  while (getMaxBlock(GOAL_SIG) == NULL) {
+    rotateRobot();
+  }
+  // turn brush back to score ball
+  int scoreStartTime = millis();
+  while (millis() - scoreStartTime <= SCORE_TIME) {
+    turnBrushBack(); 
+  }
 }
 
 void turnRobotRight() {
