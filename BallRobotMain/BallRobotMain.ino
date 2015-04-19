@@ -15,7 +15,9 @@ const int MAX_HEIGHT = 200;
 // game ball is green, foul ball is blue
 const int GAME_BALL_SIG = 2;
 const int FOUL_BALL_SIG = 1;
-
+// signature of wall and goal
+const int WALL_SIG = 3;
+const int GOAL_SIG = 4;
 
 //NOTE: AVOID USING PINS 50-53 (FOR MEGA). These pins are ICSP and will be used up by the PixyCam.
 //NOTE: AVOID USING PINS 10-13 (FOR UNO).
@@ -40,6 +42,7 @@ void setup() {
   pinMode(BRUSH_PIN_2, OUTPUT);
 }
 
+/*
 void loop() {
 
   Block* block = getPixyDistance();
@@ -67,6 +70,8 @@ void loop() {
 
   else {
     // Robot should rotate and scan for balls
+    rotateRobot();
+    Serial.println("Rotating robot");
   }
   
   // Needs a slight delay for some reason. A delay of 10ms makes it
@@ -75,6 +80,10 @@ void loop() {
   //turnBrushForward();
 
   //testMotorFunctions();
+}*/
+
+void loop(){
+  rotateRobot();  
 }
 
 // gets closest block that is a game ball
@@ -139,6 +148,13 @@ void turnRobotForward() {
 void turnRobotBack() {
   digitalWrite(LEFT_WHEEL_PIN_1, LOW);
   digitalWrite(LEFT_WHEEL_PIN_2, HIGH);
+  digitalWrite(RIGHT_WHEEL_PIN_1, LOW);
+  digitalWrite(RIGHT_WHEEL_PIN_2, HIGH);
+}
+
+void rotateRobot() {
+  digitalWrite(LEFT_WHEEL_PIN_1, HIGH);
+  digitalWrite(LEFT_WHEEL_PIN_2, LOW);
   digitalWrite(RIGHT_WHEEL_PIN_1, LOW);
   digitalWrite(RIGHT_WHEEL_PIN_2, HIGH);
 }
