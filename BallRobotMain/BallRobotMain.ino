@@ -32,10 +32,10 @@ const int BRUSH_PIN_1 = 5;
 const int BRUSH_PIN_2 = 6;
 
 // timeout to go to scoring state
-const int SCORE_TIMEOUT = 30;
+const unsigned int SCORE_TIMEOUT = 30000;
 
 // time to dump balls into goal
-const int SCORE_TIME = 7;
+const unsigned int SCORE_TIME = 7000;
 
 int numBallsCollected = 0;
 unsigned long startTime = millis();
