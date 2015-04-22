@@ -13,8 +13,8 @@ const int MAX_HEIGHT = 200;
 
 // signatures of game and foul balls
 // game ball is green, foul ball is blue
-const int GAME_BALL_SIG = 2;
-const int FOUL_BALL_SIG = 1;
+const int GAME_BALL_SIG = 1;
+const int FOUL_BALL_SIG = 2;
 // signature of goal and wall
 const int GOAL_SIG = 3;
 const int WALL_SIG = 4;
