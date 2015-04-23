@@ -71,39 +71,56 @@ void loop() {
 
     //Serial.print(block->width);
     //Serial.print(block->height);
-
-    if (block->x < MAX_WIDTH / 3) {
-      // Turn right if ball is in the leftmost third of its vision
-      turnRobotRight();
-      Serial.println("Turning right");
-    }
-    else if (block->x > (2 / 3.0 * MAX_WIDTH) ) {
-      // Turn left if ball is in the rightmost third
-      turnRobotLeft();
-      Serial.println("Turning left");
-    } else {
+    
+    Serial.print(block->x);
+    Serial.print(" ");
+    
+    if ( block->x > MAX_WIDTH / 3.0 && block->x < (2 / 3.0 * MAX_WIDTH)) {
       // Go straight if ball is in the middle third
       turnRobotForward();
+      turnBrushForward();
       Serial.println("Moving forward");
+      delay(500);
     }
+    else if ( block->x < MAX_WIDTH / 3.0) {
 
-    // Spin brush if ball is reasonably close    
+      // Turn right if ball is in the leftmost third of its vision
+      turnRobotLeft();
+        turnBrushOff();
+      Serial.println("Turning left");
+      delay(100);
+    }
+    else if (block->x > (2 / 3.0 * MAX_WIDTH)){
+      // Turn left if ball is in the rightmost third
+      turnRobotRight();
+          turnBrushOff();
+      Serial.println("Turning right");
+      delay(100);
+    }
+/*
+    // Spin brush if ball is reasonably close
     if (block->width > BRUSH_BLOCK_THRESHOLD && block->height > BRUSH_BLOCK_THRESHOLD) {
       turnBrushForward();
+    } else {
+      turnBrushOff();
     }
+*/
   } else {
     // Robot should rotate and scan for balls
     rotateRobot();
+    turnBrushOff();
     Serial.println("Rotating robot");
   }
-  
+  /*
   // Turn towards goal if timed out
   if (millis() - startTime >= SCORE_TIMEOUT && numBallsCollected >= 0) {
     scoreBalls();
     startTime = millis();
     numBallsCollected = 0;
   }
-  
+  */
+
+  /*
   // Avoid wall if switch was triggered
   if (digitalRead(LEFT_SWITCH_PIN) == LOW) {
     avoidWallBack();
@@ -112,10 +129,11 @@ void loop() {
     avoidWallBack();
     avoidWallLeft();
   }
-  
+  */
+
   // Needs a slight delay for some reason. A delay of 10ms makes it
   // rotate for too long. Need to play with these values.
-  delay(5);
+
   //turnBrushForward();
 
   //testMotorFunctions();
@@ -134,7 +152,7 @@ Block* getMaxBlock(int inputSig) {
   if (blocks)
   {
     sprintf(buf, "Detected %d:\n", blocks);
-    //    Serial.print(buf);
+    //Serial.print(buf);
 
     // find maximum block size, that is a game ball
     for (int j = 0; j < blocks; j++)
@@ -193,18 +211,18 @@ void scoreBalls() {
   // turn brush back to score ball
   int scoreStartTime = millis();
   while (millis() - scoreStartTime <= SCORE_TIME) {
-    turnBrushBack(); 
+    turnBrushBack();
   }
 }
 
-void turnRobotRight() {
+void turnRobotLeft() {
   digitalWrite(LEFT_WHEEL_PIN_1, LOW);
   digitalWrite(LEFT_WHEEL_PIN_2, HIGH);
   digitalWrite(RIGHT_WHEEL_PIN_1, HIGH);
   digitalWrite(RIGHT_WHEEL_PIN_2, LOW);
 }
 
-void turnRobotLeft() {
+void turnRobotRight() {
   digitalWrite(LEFT_WHEEL_PIN_1, HIGH);
   digitalWrite(LEFT_WHEEL_PIN_2, LOW);
   digitalWrite(RIGHT_WHEEL_PIN_1, LOW);
@@ -226,14 +244,19 @@ void turnRobotBack() {
 }
 
 void rotateRobot() {
-  digitalWrite(LEFT_WHEEL_PIN_1, HIGH);
-  digitalWrite(LEFT_WHEEL_PIN_2, LOW);
-  digitalWrite(RIGHT_WHEEL_PIN_1, LOW);
-  digitalWrite(RIGHT_WHEEL_PIN_2, HIGH);
+  digitalWrite(LEFT_WHEEL_PIN_1, LOW);
+  digitalWrite(LEFT_WHEEL_PIN_2, HIGH);
+  digitalWrite(RIGHT_WHEEL_PIN_1, HIGH);
+  digitalWrite(RIGHT_WHEEL_PIN_2, LOW);
 }
 
 void turnBrushForward() {
   digitalWrite(BRUSH_PIN_1, HIGH);
+  digitalWrite(BRUSH_PIN_2, LOW);
+}
+
+void turnBrushOff() {
+  digitalWrite(BRUSH_PIN_1, LOW);
   digitalWrite(BRUSH_PIN_2, LOW);
 }
 
