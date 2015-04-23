@@ -144,6 +144,11 @@ void loop() {
   //testMotorFunctions();
 }
 
+/*void loop() {
+  Serial.println("running");
+  scoreBalls(); 
+}*/
+
 float numObservations(int inputSig) {
   int count = 0;
   for (int i = 0; i < 5; i++) {
@@ -236,15 +241,47 @@ void avoidWallRight() {
 // score balls into goal
 void scoreBalls() {
   // rotate until robot finds goal
-  while (getMaxBlock(GOAL_SIG) == NULL) {
-    rotateRobot();
+  Serial.println("score balls");
+  while (getAverageBlock(GOAL_SIG) == NULL) {
+    Serial.println("Rotating robot");
+    rotateRobot(); 
   }
-  // go forward until goal is out of view
-  while (getMaxBlock(GOAL_SIG) != NULL) {
+  Serial.println("after finding block");
+  Block *average;
+  
+  while ((average = getAverageBlock(GOAL_SIG)) != NULL) {
+   if ( average->x > MAX_WIDTH / 3.0 && average->x < (2 / 3.0 * MAX_WIDTH)) {
+      // Go straight if ball is in the middle third
+      turnRobotForward();
+      Serial.println("Moving forward");
+      delay(1000);
+    }
+    else if ( average->x < MAX_WIDTH / 3.0) {
+
+      // Turn right if ball is in the leftmost third of its vision
+      turnRobotLeft();
+      Serial.println("Turning left");
+      delay(200);
+    }
+    else if (average->x > (2 / 3.0 * MAX_WIDTH)){
+      // Turn left if ball is in the rightmost third
+      turnRobotRight();
+      Serial.println("Turning right");
+      delay(200);
+    }
+  }
+  
+  /*Block *avgBlock;
+  while ((avgBlock->width * avgBlock->height) < (MAX_WIDTH/2)*(MAX_HEIGHT/2) ) {
+    Serial.println("moving forward");
     turnRobotForward();
-  }
+  }*/
+  // go forward until goal is out of view
+  /*while (getAverageBlock(GOAL_SIG) != NULL) {
+    turnRobotForward();
+  }*/
   // rotate until robot finds goal again
-  /*while (getMaxBlock(GOAL_SIG) == NULL) {
+  /*while (getAverageBlock(GOAL_SIG) == NULL) {
     rotateRobot();
   }*/
   // turn brush back to score ball
