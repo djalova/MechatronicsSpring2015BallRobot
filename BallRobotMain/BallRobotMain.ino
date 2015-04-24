@@ -33,7 +33,7 @@ const int BRUSH_PIN_1 = 4;
 const int BRUSH_PIN_2 = 2;
 
 // pins for left/right swithes to determine if hitting walls
-const int SERVO_PIN = 7;
+const int SERVO_PIN = 8;
 
 // pin for ir sensor (if needed)
 // const int IR_PIN = 1;
@@ -66,14 +66,16 @@ void setup() {
   pinMode(RIGHT_WHEEL_PIN_2, OUTPUT);
   pinMode(BRUSH_PIN_1, OUTPUT);
   pinMode(BRUSH_PIN_2, OUTPUT);
-  pinMode(SERVO_PIN, OUTPUT);
-  servo.attach(SERVO_PIN);
+  //pinMode(SERVO_PIN, OUTPUT);
+  //servo.attach(SERVO_PIN);
   //pinMode(LEFT_SWITCH_PIN, INPUT_PULLUP);
   //pinMode(RIGHT_SWITCH_PIN, INPUT_PULLUP);
 }
 
 void loop() {
   pickupBalls();
+  //turnRobotBack();
+  //delay(1000);
   /*servo.write(SHALLOW_ANGLE);
   delay(1000);
   Block *average = getMaxBlo(GOAL_SIG);
@@ -87,9 +89,9 @@ void loop() {
 
 void pickupBalls() {
   
-  servo.write(STEEP_ANGLE);
+  //servo.write(STEEP_ANGLE);
   turnRobotOff();
-  delay(200);
+  delay(150);
   
   //float observations = numObservations(GAME_BALL_SIG);
   //Serial.println(observations);
@@ -105,10 +107,10 @@ void pickupBalls() {
       turnRobotForward();
       turnBrushForward();
       Serial.println("Moving forward");
-      delay(1500);
+      delay(1000);
       turnRobotOff();
       turnBrushForward();
-      delay(1000);
+      delay(500);
     }
     else if ( average->x <= (MAX_WIDTH / 3.0)) {
 
@@ -116,14 +118,14 @@ void pickupBalls() {
       turnRobotLeft();
       turnBrushOff();
       Serial.println("Turning left");
-      delay(100);
+      delay(150);
     }
     else if (average->x >= (2 * MAX_WIDTH / 3.0)){
       // Turn left if ball is in the rightmost third
       turnRobotRight();
       turnBrushOff();
       Serial.println("Turning right");
-      delay(100);
+      delay(150);
     }
 /*
     // Spin brush if ball is reasonably close
@@ -137,6 +139,7 @@ void pickupBalls() {
     if (millis() - startTime >= SCORE_TIMEOUT) {
       scoreBalls();
       startTime = millis();
+      
     }
     // Robot should rotate and scan for balls
     rotateRobot();
@@ -185,7 +188,7 @@ Block* getAverageBlock(int inputSig) {
   float totalheight = 0.0;
   float count = 0;
   Block *avgBlock = new Block();
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 5; i++) {
     Block* block = getMaxBlock(inputSig);
     if (block != NULL) {
       totalx += block->x;
@@ -225,7 +228,7 @@ Block* getMaxBlock(int inputSig) {
       if (block.signature == inputSig) {
         //Serial.println(inputSig);
         unsigned int ballArea = block.width * block.height;
-        if (ballArea < maxArea) {
+        if (ballArea <= maxArea) {
           maxArea = ballArea;
           maxBlock = &block;
         }
@@ -359,25 +362,44 @@ void avoidWallRight() {
 
 // score balls into goal
 void scoreBalls() {
-  servo.write(SHALLOW_ANGLE);
+    
+  //servo.write(SHALLOW_ANGLE);
   delay(500);
-  turnRobotOff();
   turnBrushOff();
-  delay(200);
   // rotate until robot finds goal
   Serial.println("score balls");
+  unsigned long scoreStartTime = millis();
+ 
   while (true) {
-    turnRobotOff();
-    delay(150);
     
-    Block *average = getAverageBlock(GOAL_SIG);
-    
-    if (average != NULL) {
-      Serial.println(average->x);
+    if (millis() - scoreStartTime >= 2 * SCORE_TIMEOUT) {
+      return; 
     }
-    if (average != NULL && average->x > (MAX_WIDTH / 2.0 - 30) && average->x < (MAX_WIDTH / 2.0 + 30)) {
-      Serial.println("in middle third");
-      break;
+    
+    turnRobotOff();
+    delay(250);
+    
+    Block *average = getAverageAllBlocks(GOAL_SIG);
+    if (average != NULL) {
+      Serial.println(average->x); 
+    }
+    if (average != NULL) {
+      if (average->x > MAX_WIDTH / 3.0 && average->x < (2 * MAX_WIDTH / 3.0)) {
+        Serial.println("in middle third");
+        break;
+      } else if (average-> x <= MAX_WIDTH / 3.0) {
+        turnRobotRight();
+        delay(150);
+        turnRobotForward();
+        delay(300);
+      } else if (average->x >= MAX_WIDTH / 3.0) {
+        turnRobotLeft();
+        delay(150);
+        turnRobotForward();
+        delay(300);
+      }
+      turnRobotForward();
+      delay(500);
     }
     
     Serial.println("Rotating robot");
@@ -386,27 +408,31 @@ void scoreBalls() {
   }
   while (true) {
     turnRobotOff();
-    delay(150);
+    delay(50);
     
     Serial.println("moving forward");
     turnRobotForward();
     turnBrushBack();
-    delay(1000);
+    delay(1500);
     
     Block *average = getAverageBlock(GOAL_SIG);
-    Serial.print("average ");
-    Serial.print(average == NULL);
-    Serial.print(average->width * average->height);
-    
     if (average == NULL) {
       Serial.println("turning brush back");
       turnBrushBack();
-      delay(5000);
+      delay(500);
       turnBrushOff();
       break; 
     }
   }
   
+  delay(50);
+  turnRobotOff();
+  turnBrushBack();
+  delay(2000);
+      
+  turnRobotBack();
+  delay(1000);
+
 }
 
 void turnRobotLeft() {
