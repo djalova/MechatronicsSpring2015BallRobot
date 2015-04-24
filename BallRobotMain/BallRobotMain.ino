@@ -57,6 +57,9 @@ unsigned long startTime = millis();
 
 Servo servo;
 
+//TODO: feedback control in scoreballs and pickupBalls
+
+
 void setup() {
   Serial.begin(9600);
   pixy.init();
@@ -73,7 +76,7 @@ void setup() {
 }
 
 void loop() {
-  pickupBalls();
+  scoreBalls();
   //turnRobotBack();
   //delay(1000);
   /*servo.write(SHALLOW_ANGLE);
@@ -377,35 +380,40 @@ void scoreBalls() {
     }
     
     turnRobotOff();
-    delay(250);
+    delay(500);
     
     Block *average = getAverageAllBlocks(GOAL_SIG);
     if (average != NULL) {
       Serial.println(average->x); 
     }
     if (average != NULL) {
-      if (average->x > MAX_WIDTH / 3.0 && average->x < (2 * MAX_WIDTH / 3.0)) {
+      if (average->x > (MAX_WIDTH / 2.0 - 30) && average->x < (MAX_WIDTH / 2.0 + 30)) {
         Serial.println("in middle third");
-        break;
-      } else if (average-> x <= MAX_WIDTH / 3.0) {
-        turnRobotRight();
-        delay(150);
         turnRobotForward();
-        delay(300);
-      } else if (average->x >= MAX_WIDTH / 3.0) {
+        delay(750);
+      } else if (average->x <= (MAX_WIDTH / 2.0 - 30)) {
+        int turnAmount = (MAX_WIDTH / 2.0 - average->x) / (MAX_WIDTH / 2.0);
         turnRobotLeft();
-        delay(150);
+        delay(turnAmount * 2000);
         turnRobotForward();
-        delay(300);
+        delay(50);
+      } else if (average->x >= (MAX_WIDTH / 2.0 + 30)) {
+        int turnAmount = (average->x - MAX_WIDTH / 2.0) / (MAX_WIDTH / 2.0);
+        turnRobotRight();
+        delay(turnAmount * 2000);
+        turnRobotForward();
+        delay(50);
       }
-      turnRobotForward();
-      delay(500);
     }
     
     Serial.println("Rotating robot");
     rotateRobot();
     delay(50);
   }
+  return;
+  
+  // above is testing
+  
   while (true) {
     turnRobotOff();
     delay(50);
