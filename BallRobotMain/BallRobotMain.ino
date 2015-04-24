@@ -32,8 +32,8 @@ const int BRUSH_PIN_1 = 4;
 const int BRUSH_PIN_2 = 2;
 
 // pins for left/right swithes to determine if hitting walls
-const int LEFT_SWITCH_PIN = 2;
-const int RIGHT_SWITCH_PIN = 3;
+const int LEFT_SWITCH_PIN = 14;
+const int RIGHT_SWITCH_PIN = 15;
 
 // pin for ir sensor (if needed)
 // const int IR_PIN = 1;
@@ -61,11 +61,15 @@ void setup() {
   pinMode(RIGHT_WHEEL_PIN_2, OUTPUT);
   pinMode(BRUSH_PIN_1, OUTPUT);
   pinMode(BRUSH_PIN_2, OUTPUT);
-  pinMode(LEFT_SWITCH_PIN, INPUT_PULLUP);
-  pinMode(RIGHT_SWITCH_PIN, INPUT_PULLUP);
+  //pinMode(LEFT_SWITCH_PIN, INPUT_PULLUP);
+  //pinMode(RIGHT_SWITCH_PIN, INPUT_PULLUP);
 }
 
 void loop() {
+  scoreBalls();
+}
+
+void pickupBalls() {
   
   turnRobotOff();
   delay(500);
@@ -114,7 +118,7 @@ void loop() {
     rotateRobot();
     turnBrushOff();
     Serial.println("Rotating robot");
-    delay(100);
+    delay(200);
   }
   /*
   // Turn towards goal if timed out
@@ -144,22 +148,12 @@ void loop() {
   //testMotorFunctions();
 }
 
-/*void loop() {
-  Serial.println("running");
-  scoreBalls(); 
+/*
+float getCenterValue(Block **array) {
+  Serial.println(array[0]->x);
+  Serial.println(array[1]->x);
+  return ((array[0])->x + (array[1])->x) / 2.0;
 }*/
-
-float numObservations(int inputSig) {
-  int count = 0;
-  for (int i = 0; i < 5; i++) {
-    Block* block = getMaxBlock(inputSig);
-    if (block != NULL) {
-      Serial.println("got here");
-      count++;
-    }
-  }
-  return count / 5.0;
-}
 
 Block* getAverageBlock(int inputSig) {
   float totalx = 0.0;
@@ -206,7 +200,7 @@ Block* getMaxBlock(int inputSig) {
       //Serial.println(buf);
       if (block.signature == inputSig) {
         //Serial.println(inputSig);
-        int ballArea = block.width * block.height;
+        unsigned int ballArea = block.width * block.height;
         if (ballArea < maxArea) {
           maxArea = ballArea;
           maxBlock = &block;
@@ -216,6 +210,106 @@ Block* getMaxBlock(int inputSig) {
     }
   }
   return maxBlock;
+}
+
+Block* getAverageAllBlocks(int inputSig) {
+
+  // grab blocks!
+  uint16_t blocks = pixy.getBlocks();
+  // If there are detect blocks, print them!
+
+  if (blocks)
+  {
+    Block* avgBlock = new Block();
+    float totalx = 0.0;
+    float totalwidth = 0.0;
+    float totalheight = 0.0;
+    float count = 0;
+
+    // find maximum block size, that is a game ball
+    for (int j = 0; j < blocks; j++)
+    {
+      Block block = pixy.blocks[j];
+      //sprintf(buf, "  block %d: ", j);
+      //Serial.println(buf);
+      if (block.signature == inputSig) {
+        //Serial.println(inputSig);
+        totalx += block.x;
+        totalwidth += block.width;
+        totalheight += block.height;
+        count++;
+      }
+    }
+    if (count == 0) return NULL;
+    avgBlock->x = totalx / count;
+    avgBlock->width = totalwidth / count;
+    avgBlock->height = totalheight / count;
+    return avgBlock;
+  } else {
+    return NULL; 
+  }
+}
+float getTwoMaxBlocks(int inputSig) {
+  
+  Block* array[2];
+  int i = 0;
+  char buf[32];
+  int x1 = -1;
+  int x2 = -1;
+
+  // grab blocks!
+  uint16_t blocks = pixy.getBlocks();
+  unsigned int maxArea = MAX_WIDTH * MAX_HEIGHT;
+  int index = -1;
+  // If there are detect blocks, print them!
+
+  if (blocks)
+  {
+    sprintf(buf, "Detected %d:\n", blocks);
+
+    // find maximum block size, that is a game ball
+    for (int j = 0; j < blocks; j++)
+    {
+      Block block = pixy.blocks[j];
+      if (block.signature == inputSig) {
+        //Serial.println(inputSig);
+        unsigned int ballArea = block.width * block.height;
+        if (ballArea < maxArea) {
+          maxArea = ballArea;
+          x1 = block.x;
+          Serial.print(" x1 ");
+          Serial.println(x1);
+          index = j;
+        }
+      }
+    }
+    maxArea = MAX_WIDTH * MAX_HEIGHT;
+
+    for (int j = 0; j < blocks; j++)
+    {
+      Block block = pixy.blocks[j];
+      if (block.signature == inputSig && j != index) {
+        //Serial.println(inputSig);
+        unsigned int ballArea = block.width * block.height;
+        if (ballArea < maxArea) {
+          maxArea = ballArea;
+          x2 = block.x;
+          Serial.print(" x2 ");
+          Serial.println(x2);
+          index = j;
+        }
+      }
+    }
+    
+    if (x1 != -1.0 && x2 == -1.0) {
+      return x1;
+    } else if (x2 != -1.0 && x1 == -1.0) {
+      return x2; 
+    }
+    
+    return ((x1 + x2) / 2.0);    
+  }
+  return -1.0;
 }
 
 // functions to avoid wall
@@ -240,21 +334,47 @@ void avoidWallRight() {
 
 // score balls into goal
 void scoreBalls() {
+  turnBrushOff();
   // rotate until robot finds goal
   Serial.println("score balls");
-  while (getAverageBlock(GOAL_SIG) == NULL) {
+  while (true) {
+    turnRobotOff();
+    delay(500);
+    
+    if (getAverageBlock(GOAL_SIG) != NULL) {
+      break; 
+    }
+    
     Serial.println("Rotating robot");
-    rotateRobot(); 
+    rotateRobot();
+    delay(200);
   }
   Serial.println("after finding block");
-  Block *average;
   
-  while ((average = getAverageBlock(GOAL_SIG)) != NULL) {
+  Block *average;
+  while (true) {
+   
+   turnRobotOff();
+   delay(500);
+   
+   if ((average = getAverageAllBlocks(GOAL_SIG)) == NULL) {
+     break; 
+   }
+    
+   Serial.print(" center: ");
+   Serial.print(average->x);
+   Serial.print(" ");
+   if (average->x <= 1.0) {
+     rotateRobot();
+     Serial.println("Rotating robot");
+     delay(200);
+     continue;
+   }
    if ( average->x > MAX_WIDTH / 3.0 && average->x < (2 / 3.0 * MAX_WIDTH)) {
       // Go straight if ball is in the middle third
       turnRobotForward();
       Serial.println("Moving forward");
-      delay(1000);
+      delay(500);
     }
     else if ( average->x < MAX_WIDTH / 3.0) {
 
@@ -284,12 +404,17 @@ void scoreBalls() {
   /*while (getAverageBlock(GOAL_SIG) == NULL) {
     rotateRobot();
   }*/
+  
+  
   // turn brush back to score ball
-  turnRobotOff();
+  /*turnRobotOff();
   int scoreStartTime = millis();
   while (millis() - scoreStartTime <= SCORE_TIME) {
+    Serial.println("Turning brush back");
     turnBrushBack();
-  }
+    delay(20);
+  }*/
+  
 }
 
 void turnRobotLeft() {
