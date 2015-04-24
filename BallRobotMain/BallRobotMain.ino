@@ -339,93 +339,38 @@ void scoreBalls() {
   Serial.println("score balls");
   while (true) {
     turnRobotOff();
-    delay(500);
+    delay(50);
     
     Block *average = getAverageAllBlocks(GOAL_SIG);
-    if (average != NULL && average->x > MAX_WIDTH / 3.0 && average->x < 2 * MAX_WIDTH / 3.0) {
-      Serial.println(average->x);
+    if (average != NULL) {
+      Serial.println(average->x); 
+    }
+    if (average != NULL && average->x > (MAX_WIDTH / 2.0 - 10) && average->x < (MAX_WIDTH / 2.0 + 10)) {
+      Serial.println("in middle third");
       break; 
     }
     
     Serial.println("Rotating robot");
     rotateRobot();
-    delay(200);
+    delay(25);
   }
   while (true) {
     turnRobotOff();
-    delay(500);
+    delay(50);
     
-    turnRobotForward();
-    delay(200);
+    Block *average = getAverageBlock(GOAL_SIG);
+    if (average == NULL || (average->width * average->height < 50)) {
+      Serial.println("turning brush back");
+      turnBrushBack();
+      delay(5000);
+      turnBrushOff();
+      break; 
+    }
     
-    turnBrushBack();
-  }
-  
-  Serial.println("after finding block");
-  
-  Block *average;
-  while (true) {
-   
-   turnRobotOff();
-   delay(500);
-   
-   if ((average = getAverageAllBlocks(GOAL_SIG)) == NULL) {
-     break; 
-   }
-    
-   Serial.print(" center: ");
-   Serial.print(average->x);
-   Serial.print(" ");
-   if (average->x <= 1.0) {
-     rotateRobot();
-     Serial.println("Rotating robot");
-     delay(200);
-     continue;
-   }
-   if ( average->x > MAX_WIDTH / 3.0 && average->x < (2 / 3.0 * MAX_WIDTH)) {
-      // Go straight if ball is in the middle third
-      turnRobotForward();
-      Serial.println("Moving forward");
-      delay(500);
-    }
-    else if ( average->x < MAX_WIDTH / 3.0) {
-
-      // Turn right if ball is in the leftmost third of its vision
-      turnRobotLeft();
-      Serial.println("Turning left");
-      delay(200);
-    }
-    else if (average->x > (2 / 3.0 * MAX_WIDTH)){
-      // Turn left if ball is in the rightmost third
-      turnRobotRight();
-      Serial.println("Turning right");
-      delay(200);
-    }
-  }
-  
-  /*Block *avgBlock;
-  while ((avgBlock->width * avgBlock->height) < (MAX_WIDTH/2)*(MAX_HEIGHT/2) ) {
     Serial.println("moving forward");
     turnRobotForward();
-  }*/
-  // go forward until goal is out of view
-  /*while (getAverageBlock(GOAL_SIG) != NULL) {
-    turnRobotForward();
-  }*/
-  // rotate until robot finds goal again
-  /*while (getAverageBlock(GOAL_SIG) == NULL) {
-    rotateRobot();
-  }*/
-  
-  
-  // turn brush back to score ball
-  /*turnRobotOff();
-  int scoreStartTime = millis();
-  while (millis() - scoreStartTime <= SCORE_TIME) {
-    Serial.println("Turning brush back");
-    turnBrushBack();
-    delay(20);
-  }*/
+    delay(250);
+  }
   
 }
 
