@@ -240,7 +240,7 @@ Block* getAverageAllBlocks(int inputSig) {
         count++;
       }
     }
-    if (count == 0) return NULL;
+    if (count == 0.0) return NULL;
     avgBlock->x = totalx / count;
     avgBlock->width = totalwidth / count;
     avgBlock->height = totalheight / count;
@@ -341,7 +341,9 @@ void scoreBalls() {
     turnRobotOff();
     delay(500);
     
-    if (getAverageBlock(GOAL_SIG) != NULL) {
+    Block *average = getAverageAllBlocks(GOAL_SIG);
+    if (average != NULL && average->x > MAX_WIDTH / 3.0 && average->x < 2 * MAX_WIDTH / 3.0) {
+      Serial.println(average->x);
       break; 
     }
     
@@ -349,6 +351,16 @@ void scoreBalls() {
     rotateRobot();
     delay(200);
   }
+  while (true) {
+    turnRobotOff();
+    delay(500);
+    
+    turnRobotForward();
+    delay(200);
+    
+    turnBrushBack();
+  }
+  
   Serial.println("after finding block");
   
   Block *average;
