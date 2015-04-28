@@ -8,6 +8,10 @@ Pixy pixy;
 // threshold for rotating brush
 const int BRUSH_BLOCK_THRESHOLD = 40;
 
+const int CENTER_THRESHOLD = 20;
+
+const int PIXY_ITERATIONS = 1000;
+
 // max width and height of image returned by Pixy
 const int MAX_WIDTH = 320;
 const int MAX_HEIGHT = 200;
@@ -15,9 +19,9 @@ const int MAX_HEIGHT = 200;
 // signatures of game and foul balls
 // game ball is green, foul ball is blue
 const int GAME_BALL_SIG = 1;
-const int FOUL_BALL_SIG = 2;
+const int FOUL_BALL_SIG = 3;
 // signature of goal and wall
-const int GOAL_SIG = 3;
+const int GOAL_SIG = 2;
 const int WALL_SIG = 4;
 
 //NOTE: AVOID USING PINS 50-53 (FOR MEGA). These pins are ICSP and will be used up by the PixyCam.
@@ -47,7 +51,7 @@ const unsigned int SCORE_TIME = 7000;
 const unsigned int WALL_BACKUP_TIME = 2000;
 const float WALL_TURN_TIME = 1000;
 
-const int SPEED = 200;
+const int SPEED = 120;
 
 const int STEEP_ANGLE = 120;
 const int SHALLOW_ANGLE = 180;
@@ -56,9 +60,6 @@ int numBallsCollected = 0;
 unsigned long startTime = millis();
 
 Servo servo;
-
-//TODO: feedback control in scoreballs and pickupBalls
-
 
 void setup() {
   Serial.begin(9600);
@@ -69,80 +70,64 @@ void setup() {
   pinMode(RIGHT_WHEEL_PIN_2, OUTPUT);
   pinMode(BRUSH_PIN_1, OUTPUT);
   pinMode(BRUSH_PIN_2, OUTPUT);
-  //pinMode(SERVO_PIN, OUTPUT);
-  //servo.attach(SERVO_PIN);
-  //pinMode(LEFT_SWITCH_PIN, INPUT_PULLUP);
-  //pinMode(RIGHT_SWITCH_PIN, INPUT_PULLUP);
 }
 
 void loop() {
   scoreBalls();
-  //turnRobotBack();
-  //delay(1000);
-  /*servo.write(SHALLOW_ANGLE);
-  delay(1000);
-  Block *average = getMaxBlo(GOAL_SIG);
-  if (average != NULL) {
-    Serial.println(average->x); 
+  /*Block *block = getMaxBlock(GOAL_SIG);
+  if (block != NULL) {
+    Serial.println(block->x);
   } else {
     Serial.println("nothing");
-  }*/
-  
+  }
+  delay(350);*/
 }
 
 void pickupBalls() {
-  
-  //servo.write(STEEP_ANGLE);
+
   turnRobotOff();
   delay(150);
-  
-  //float observations = numObservations(GAME_BALL_SIG);
-  //Serial.println(observations);
-  Block* average = getAverageBlock(GAME_BALL_SIG);
 
-  if (average != NULL) {
+  Block* block = getMaxBlock(GAME_BALL_SIG);
 
-    Serial.print(average->x);
+  if (block != NULL) {
+
+
+    Serial.print(block->x);
     Serial.print(" ");
-    
-    if ( average->x > (MAX_WIDTH / 3.0) && average->x < (2 * MAX_WIDTH / 3.0)) {
-      // Go straight if ball is in the middle third
-      turnRobotForward();
-      turnBrushForward();
-      Serial.println("Moving forward");
-      delay(1000);
-      turnRobotOff();
-      turnBrushForward();
-      delay(500);
-    }
-    else if ( average->x <= (MAX_WIDTH / 3.0)) {
+    turnBrushForward();
 
-      // Turn right if ball is in the leftmost third of its vision
+    if (block->x > (MAX_WIDTH / 2.0 - CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
+      Serial.println("in middle third");
+      turnRobotForward();
+      delay(750);
+    } else if (block->x <= (MAX_WIDTH / 2.0 - CENTER_THRESHOLD)) {
+      Serial.println("turning left");
+      float center = MAX_WIDTH / 2.0;
+      float turnAmount = (center - (float)block->x) / center;
+      Serial.print("turn amount ");
+      Serial.println(turnAmount * 200);
       turnRobotLeft();
-      turnBrushOff();
-      Serial.println("Turning left");
-      delay(150);
-    }
-    else if (average->x >= (2 * MAX_WIDTH / 3.0)){
-      // Turn left if ball is in the rightmost third
+      delay(turnAmount * 200);
+      turnRobotForward();
+      delay(100);
+    } else if (block->x >= (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
+      Serial.println("turning right");
+      float center = MAX_WIDTH / 2.0;
+      float turnAmount = ((float)block->x - center) / center;
+      Serial.print("turn amount ");
+      Serial.println(turnAmount * 200);
       turnRobotRight();
-      turnBrushOff();
-      Serial.println("Turning right");
-      delay(150);
+      delay(turnAmount * 200);
+      turnRobotForward();
+      delay(100);
     }
-/*
-    // Spin brush if ball is reasonably close
-    if (block->width > BRUSH_BLOCK_THRESHOLD && block->height > BRUSH_BLOCK_THRESHOLD) {
-      turnBrushForward();
-    } else {
-      turnBrushOff();
-    }
-*/
+
   } else {
     if (millis() - startTime >= SCORE_TIMEOUT) {
+      Serial.println("timeout is over");
       scoreBalls();
       startTime = millis();
-      
     }
     // Robot should rotate and scan for balls
     rotateRobot();
@@ -150,296 +135,159 @@ void pickupBalls() {
     Serial.println("Rotating robot");
     delay(150);
   }
-  /*
-  // Turn towards goal if timed out
-  if (millis() - startTime >= SCORE_TIMEOUT && numBallsCollected >= 0) {
-    scoreBalls();
-    startTime = millis();
-    numBallsCollected = 0;
-  }
-  */
-
-  /*
-  // Avoid wall if switch was triggered
-  if (digitalRead(LEFT_SWITCH_PIN) == LOW) {
-    avoidWallBack();
-    avoidWallRight();
-  } else if (digitalRead(RIGHT_SWITCH_PIN == LOW)) {
-    avoidWallBack();
-    avoidWallLeft();
-  }
-  */
-
-  // Needs a slight delay for some reason. A delay of 10ms makes it
-  // rotate for too long. Need to play with these values.
-
-  //turnBrushForward();
-
-  //testMotorFunctions();
 }
 
-/*
-float getCenterValue(Block **array) {
-  Serial.println(array[0]->x);
-  Serial.println(array[1]->x);
-  return ((array[0])->x + (array[1])->x) / 2.0;
-}*/
-
-Block* getAverageBlock(int inputSig) {
-  float totalx = 0.0;
-  float totalwidth = 0.0;
-  float totalheight = 0.0;
-  float count = 0;
-  Block *avgBlock = new Block();
-  for (int i = 0; i < 5; i++) {
-    Block* block = getMaxBlock(inputSig);
-    if (block != NULL) {
-      totalx += block->x;
-      totalwidth += block->width;
-      totalheight += block->height;
-      count++;
-    }
-  }
-  if (count == 0) return NULL;
-  avgBlock->x = totalx / count;
-  avgBlock->width = totalwidth / count;
-  avgBlock->height = totalheight / count;
-  return avgBlock;
-}
 
 Block* getMaxBlock(int inputSig) {
-  int i = 0;
   char buf[32];
-  Block* maxBlock = NULL;
+  boolean found = false;
 
   // grab blocks!
   uint16_t blocks = pixy.getBlocks();
   unsigned int maxArea = MAX_WIDTH * MAX_HEIGHT;
   // If there are detect blocks, print them!
 
+  Block *maxBlock = new Block();
+
   if (blocks)
   {
-    sprintf(buf, "Detected %d:\n", blocks);
-    //Serial.print(buf);
+    for (int i = 0; i < PIXY_ITERATIONS; i++) {
+      //if (i == PIXY_ITERATIONS - 1) {
+        sprintf(buf, "Detected %d:\n", blocks);
+        //Serial.print(buf);
 
-    // find maximum block size, that is a game ball
-    for (int j = 0; j < blocks; j++)
-    {
-      Block block = pixy.blocks[j];
-      //sprintf(buf, "  block %d: ", j);
-      //Serial.println(buf);
-      if (block.signature == inputSig) {
-        //Serial.println(inputSig);
-        unsigned int ballArea = block.width * block.height;
-        if (ballArea <= maxArea) {
-          maxArea = ballArea;
-          maxBlock = &block;
+        // find maximum block size, that is a game ball
+        for (int j = 0; j < blocks; j++)
+        {
+          Block block = pixy.blocks[j];
+          //sprintf(buf, "  block %d: ", j);
+          //Serial.println(buf);
+          if (block.signature == inputSig) {
+            //Serial.println(inputSig);
+            unsigned int ballArea = block.width * block.height;
+            if (ballArea <= maxArea) {
+              maxArea = ballArea;
+              maxBlock->x = block.x;
+              maxBlock->width = block.width;
+              maxBlock->height = block.height;
+              found = true;
+            }
+          }
+          //      pixy.blocks[j].print();
         }
-      }
-      //      pixy.blocks[j].print();
+      //}
     }
   }
-  return maxBlock;
-}
-
-Block* getAverageAllBlocks(int inputSig) {
-
-  // grab blocks!
-  uint16_t blocks = pixy.getBlocks();
-  // If there are detect blocks, print them!
-
-  if (blocks)
-  {
-    Block* avgBlock = new Block();
-    float totalx = 0.0;
-    float totalwidth = 0.0;
-    float totalheight = 0.0;
-    float count = 0;
-
-    // find maximum block size, that is a game ball
-    for (int j = 0; j < blocks; j++)
-    {
-      Block block = pixy.blocks[j];
-      //sprintf(buf, "  block %d: ", j);
-      //Serial.println(buf);
-      if (block.signature == inputSig) {
-        totalx += block.x;
-        totalwidth += block.width;
-        totalheight += block.height;
-        count++;
-      }
-    }
-    if (count == 0.0) return NULL;
-    avgBlock->x = totalx / count;
-    avgBlock->width = totalwidth / count;
-    avgBlock->height = totalheight / count;
-    return avgBlock;
+  if (!found) {
+    return NULL;
   } else {
-    Serial.println("no blocks");
-    return NULL; 
-  }
-}
-
-float getTwoMaxBlocks(int inputSig) {
-  
-  Block* array[2];
-  int i = 0;
-  char buf[32];
-  int x1 = -1;
-  int x2 = -1;
-
-  // grab blocks!
-  uint16_t blocks = pixy.getBlocks();
-  unsigned int maxArea = MAX_WIDTH * MAX_HEIGHT;
-  int index = -1;
-  // If there are detect blocks, print them!
-
-  if (blocks)
-  {
-    sprintf(buf, "Detected %d:\n", blocks);
-
-    // find maximum block size, that is a game ball
-    for (int j = 0; j < blocks; j++)
-    {
-      Block block = pixy.blocks[j];
-      if (block.signature == inputSig) {
-        //Serial.println(inputSig);
-        unsigned int ballArea = block.width * block.height;
-        if (ballArea < maxArea) {
-          maxArea = ballArea;
-          x1 = block.x;
-          Serial.print(" x1 ");
-          Serial.println(x1);
-          index = j;
-        }
-      }
-    }
-    maxArea = MAX_WIDTH * MAX_HEIGHT;
-
-    for (int j = 0; j < blocks; j++)
-    {
-      Block block = pixy.blocks[j];
-      if (block.signature == inputSig && j != index) {
-        //Serial.println(inputSig);
-        unsigned int ballArea = block.width * block.height;
-        if (ballArea < maxArea) {
-          maxArea = ballArea;
-          x2 = block.x;
-          Serial.print(" x2 ");
-          Serial.println(x2);
-          index = j;
-        }
-      }
-    }
-    
-    if (x1 != -1.0 && x2 == -1.0) {
-      return x1;
-    } else if (x2 != -1.0 && x1 == -1.0) {
-      return x2; 
-    }
-    
-    return ((x1 + x2) / 2.0);    
-  }
-  return -1.0;
-}
-
-// functions to avoid wall
-void avoidWallBack() {
-  unsigned long avoidStartTime = millis();
-  while (millis() - avoidStartTime <= WALL_BACKUP_TIME) {
-    turnRobotBack();
-  }
-}
-void avoidWallLeft() {
-  unsigned long avoidStartTime = millis();
-  while (millis() - avoidStartTime <= WALL_TURN_TIME) {
-    turnRobotLeft();
-  }
-}
-void avoidWallRight() {
-  unsigned long avoidStartTime = millis();
-  while (millis() - avoidStartTime <= WALL_TURN_TIME) {
-    turnRobotRight();
+    return maxBlock;
   }
 }
 
 // score balls into goal
 void scoreBalls() {
-    
-  //servo.write(SHALLOW_ANGLE);
-  delay(500);
+  Serial.println("IN SCORE MODE");
+
   turnBrushOff();
   // rotate until robot finds goal
   Serial.println("score balls");
   unsigned long scoreStartTime = millis();
- 
+  
+  int left = 0;
+  int right = 0;
+  boolean started = false;
+  boolean nosignal = 0;
+  boolean center = false;
+
   while (true) {
-    
-    if (millis() - scoreStartTime >= 2 * SCORE_TIMEOUT) {
-      return; 
-    }
-    
+
+    // exit if still in loop after 60 seconds
+    /*if (millis() - scoreStartTime >= SCORE_TIMEOUT) {
+      return;
+    }*/
+
     turnRobotOff();
-    delay(500);
-    
-    Block *average = getAverageAllBlocks(GOAL_SIG);
-    if (average != NULL) {
-      Serial.println(average->x); 
-    }
-    if (average != NULL) {
-      if (average->x > (MAX_WIDTH / 2.0 - 30) && average->x < (MAX_WIDTH / 2.0 + 30)) {
+    delay(350);
+
+    Block *block = getMaxBlock(GOAL_SIG);
+    if (block != NULL) {
+      
+      Serial.print("width ");
+      Serial.print(block->width);
+      Serial.print("height ");
+      Serial.println(block->height);
+
+      if (block->x > (MAX_WIDTH / 2.0 - CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
+        
+        if (block->width > MAX_WIDTH - 50 && block->height > MAX_HEIGHT - 5) {  
+          break; 
+        }
+        
         Serial.println("in middle third");
         turnRobotForward();
-        delay(750);
-      } else if (average->x <= (MAX_WIDTH / 2.0 - 30)) {
-        int turnAmount = (MAX_WIDTH / 2.0 - average->x) / (MAX_WIDTH / 2.0);
+        delay(500);
+      } else if (block->x <= (MAX_WIDTH / 2.0 - CENTER_THRESHOLD)) {
+        Serial.println("turning left");
+        float center = MAX_WIDTH / 2.0;
+        float turnAmount = (center - (float)block->x) / center;
+        Serial.print("turn amount ");
+        Serial.println(turnAmount * 250);
         turnRobotLeft();
-        delay(turnAmount * 2000);
+        delay(turnAmount * 250);
         turnRobotForward();
-        delay(50);
-      } else if (average->x >= (MAX_WIDTH / 2.0 + 30)) {
-        int turnAmount = (average->x - MAX_WIDTH / 2.0) / (MAX_WIDTH / 2.0);
+        delay(200);
+        left++;
+      } else if (block->x >= (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
+        Serial.println("turning right");
+        float center = MAX_WIDTH / 2.0;
+        float turnAmount = ((float)block->x - center) / center;
+        Serial.print("turn amount ");
+        Serial.println(turnAmount * 250);
         turnRobotRight();
-        delay(turnAmount * 2000);
+        delay(turnAmount * 250);
         turnRobotForward();
-        delay(50);
+        delay(200);
+        right++;
       }
+      started = true;
     }
-    
-    Serial.println("Rotating robot");
-    rotateRobot();
-    delay(50);
+    else {
+      if (started) {
+        if (nosignal >= 2) {
+          Serial.println("final in the center");
+          center = true;
+          break;
+        }
+        Serial.println("no signal");
+        nosignal++;
+      }
+      Serial.println("Rotating robot");
+      rotateRobot();
+      delay(150);
+    }
   }
-  return;
   
-  // above is testing
-  
-  while (true) {
-    turnRobotOff();
-    delay(50);
-    
-    Serial.println("moving forward");
-    turnRobotForward();
-    turnBrushBack();
-    delay(1500);
-    
-    Block *average = getAverageBlock(GOAL_SIG);
-    if (average == NULL) {
-      Serial.println("turning brush back");
-      turnBrushBack();
+  if (!center) {
+    Serial.println(left);
+    Serial.println(right);
+    if (left > right) {
+      Serial.println("final rotate right");
+      rotateRobotOther();
+      delay(500); 
+    } else {
+      Serial.println("final rotate left");
+      rotateRobot();
       delay(500);
-      turnBrushOff();
-      break; 
     }
   }
-  
+
   delay(50);
   turnRobotOff();
   turnBrushBack();
-  delay(2000);
-      
+  delay(200);
   turnRobotBack();
-  delay(1000);
+  delay(1500);
 
 }
 
@@ -483,6 +331,13 @@ void rotateRobot() {
   analogWrite(LEFT_WHEEL_PIN_2, SPEED);
   analogWrite(RIGHT_WHEEL_PIN_1, SPEED);
   analogWrite(RIGHT_WHEEL_PIN_2, LOW);
+}
+
+void rotateRobotOther() {
+  analogWrite(LEFT_WHEEL_PIN_1, SPEED);
+  analogWrite(LEFT_WHEEL_PIN_2, LOW);
+  analogWrite(RIGHT_WHEEL_PIN_1, LOW);
+  analogWrite(RIGHT_WHEEL_PIN_2, SPEED);
 }
 
 void turnBrushForward() {
