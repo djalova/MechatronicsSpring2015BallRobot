@@ -8,9 +8,11 @@ Pixy pixy;
 // threshold for rotating brush
 const int BRUSH_BLOCK_THRESHOLD = 40;
 
-const int CENTER_THRESHOLD = 20;
+// threshold for center of vision (may need to change to 10)
+const int CENTER_THRESHOLD = 30;
 
-const int PIXY_ITERATIONS = 1000;
+// iterations to sample Pixy
+const int PIXY_ITERATIONS = 5;
 
 // max width and height of image returned by Pixy
 const int MAX_WIDTH = 320;
@@ -39,11 +41,8 @@ const int BRUSH_PIN_2 = 2;
 // pins for left/right swithes to determine if hitting walls
 const int SERVO_PIN = 8;
 
-// pin for ir sensor (if needed)
-// const int IR_PIN = 1;
-
 // timeout to go to scoring state
-const unsigned int SCORE_TIMEOUT = 30000;
+const unsigned long SCORE_TIMEOUT = 45000;
 // time to dump balls into goal
 const unsigned int SCORE_TIME = 7000;
 
@@ -59,6 +58,8 @@ const int SHALLOW_ANGLE = 180;
 int numBallsCollected = 0;
 unsigned long startTime = millis();
 
+static Block *maxBlock = new Block();
+
 Servo servo;
 
 void setup() {
@@ -73,10 +74,13 @@ void setup() {
 }
 
 void loop() {
-  scoreBalls();
-  /*Block *block = getMaxBlock(GOAL_SIG);
+  pickupBalls();
+  /*Block *block = getMaxBlock(WALL_SIG);
   if (block != NULL) {
     Serial.println(block->x);
+    Serial.println(block->width);
+    Serial.println(block->height);
+    Serial.println("----");
   } else {
     Serial.println("nothing");
   }
@@ -137,68 +141,17 @@ void pickupBalls() {
   }
 }
 
-
-Block* getMaxBlock(int inputSig) {
-  char buf[32];
-  boolean found = false;
-
-  // grab blocks!
-  uint16_t blocks = pixy.getBlocks();
-  unsigned int maxArea = MAX_WIDTH * MAX_HEIGHT;
-  // If there are detect blocks, print them!
-
-  Block *maxBlock = new Block();
-
-  if (blocks)
-  {
-    for (int i = 0; i < PIXY_ITERATIONS; i++) {
-      //if (i == PIXY_ITERATIONS - 1) {
-        sprintf(buf, "Detected %d:\n", blocks);
-        //Serial.print(buf);
-
-        // find maximum block size, that is a game ball
-        for (int j = 0; j < blocks; j++)
-        {
-          Block block = pixy.blocks[j];
-          //sprintf(buf, "  block %d: ", j);
-          //Serial.println(buf);
-          if (block.signature == inputSig) {
-            //Serial.println(inputSig);
-            unsigned int ballArea = block.width * block.height;
-            if (ballArea <= maxArea) {
-              maxArea = ballArea;
-              maxBlock->x = block.x;
-              maxBlock->width = block.width;
-              maxBlock->height = block.height;
-              found = true;
-            }
-          }
-          //      pixy.blocks[j].print();
-        }
-      //}
-    }
-  }
-  if (!found) {
-    return NULL;
-  } else {
-    return maxBlock;
-  }
-}
-
 // score balls into goal
 void scoreBalls() {
+  delay(1000);
   Serial.println("IN SCORE MODE");
 
   turnBrushOff();
   // rotate until robot finds goal
   Serial.println("score balls");
   unsigned long scoreStartTime = millis();
-  
-  int left = 0;
-  int right = 0;
+
   boolean started = false;
-  boolean nosignal = 0;
-  boolean center = false;
 
   while (true) {
 
@@ -210,20 +163,20 @@ void scoreBalls() {
     turnRobotOff();
     delay(350);
 
-    Block *block = getMaxBlock(GOAL_SIG);
+    Block* block = getMaxBlock(GOAL_SIG);
     if (block != NULL) {
-      
+
       Serial.print("width ");
       Serial.print(block->width);
       Serial.print("height ");
       Serial.println(block->height);
 
       if (block->x > (MAX_WIDTH / 2.0 - CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
-        
-        if (block->width > MAX_WIDTH - 50 && block->height > MAX_HEIGHT - 5) {  
-          break; 
+
+        if (block->width > MAX_WIDTH - 150 && block->height > MAX_HEIGHT - 30) {
+          break;
         }
-        
+
         Serial.println("in middle third");
         turnRobotForward();
         delay(500);
@@ -237,7 +190,6 @@ void scoreBalls() {
         delay(turnAmount * 250);
         turnRobotForward();
         delay(200);
-        left++;
       } else if (block->x >= (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
         Serial.println("turning right");
         float center = MAX_WIDTH / 2.0;
@@ -248,47 +200,73 @@ void scoreBalls() {
         delay(turnAmount * 250);
         turnRobotForward();
         delay(200);
-        right++;
       }
-      started = true;
     }
     else {
-      if (started) {
-        if (nosignal >= 2) {
-          Serial.println("final in the center");
-          center = true;
-          break;
-        }
-        Serial.println("no signal");
-        nosignal++;
-      }
       Serial.println("Rotating robot");
       rotateRobot();
       delay(150);
     }
   }
   
-  if (!center) {
-    Serial.println(left);
-    Serial.println(right);
-    if (left > right) {
-      Serial.println("final rotate right");
-      rotateRobotOther();
-      delay(500); 
-    } else {
-      Serial.println("final rotate left");
-      rotateRobot();
-      delay(500);
-    }
+  // move back a little
+  turnRobotBack();
+  delay(150);
+  // rotate left first
+  rotateRobot();
+  delay(500);
+  // check to see if wall is there
+  turnRobotOff();
+  delay(350);
+  Block* block = getMaxBlock(WALL_SIG);
+  if (block != NULL) {
+    // if so, rotate right twice as much
+    rotateRobotOther();
+    delay(1000); 
   }
 
   delay(50);
   turnRobotOff();
   turnBrushBack();
-  delay(200);
+  delay(1000);
   turnRobotBack();
   delay(1500);
 
+}
+
+
+Block* getMaxBlock(int inputSig) {
+  boolean found = false;
+
+  unsigned int maxArea = MAX_WIDTH * MAX_HEIGHT;
+
+  for (int i = 0; i < PIXY_ITERATIONS * 50; i++) {
+    if (i % 50 == 0) {
+      uint16_t blocks = pixy.getBlocks();
+      if (blocks) {
+        // find maximum block size, that is a game ball
+        for (int j = 0; j < blocks; j++)
+        {
+          Block block = pixy.blocks[j];
+          if (block.signature == inputSig) {
+            unsigned int ballArea = block.width * block.height;
+            if (ballArea <= maxArea) {
+              maxArea = ballArea;
+              maxBlock->x = block.x;
+              maxBlock->width = block.width;
+              maxBlock->height = block.height;
+              found = true;
+            }
+          }
+        }
+      }
+    }
+  }
+  if (!found) {
+    return NULL;
+  } else {
+    return maxBlock;
+  }
 }
 
 void turnRobotLeft() {
