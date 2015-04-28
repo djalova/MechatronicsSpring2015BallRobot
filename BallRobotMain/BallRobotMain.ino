@@ -29,33 +29,27 @@ const int WALL_SIG = 4;
 //NOTE: AVOID USING PINS 50-53 (FOR MEGA). These pins are ICSP and will be used up by the PixyCam.
 //NOTE: AVOID USING PINS 10-13 (FOR UNO).
 // output pins for drive wheels
-const int LEFT_WHEEL_PIN_1 = 3;
-const int LEFT_WHEEL_PIN_2 = 5;
-const int RIGHT_WHEEL_PIN_1 = 6;
-const int RIGHT_WHEEL_PIN_2 = 9;
+const int LEFT_WHEEL_PIN_1 = 8;
+const int LEFT_WHEEL_PIN_2 = 9;
+const int RIGHT_WHEEL_PIN_1 = 10;
+const int RIGHT_WHEEL_PIN_2 = 11;
 
 // output pins for brush
-const int BRUSH_PIN_1 = 4;
-const int BRUSH_PIN_2 = 2;
+const int BRUSH_PIN_1 = 2;
+const int BRUSH_PIN_2 = 3;
 
 // pins for left/right swithes to determine if hitting walls
-const int SERVO_PIN = 8;
+const int SERVO_PIN = 5;
 
 // timeout to go to scoring state
 const unsigned long SCORE_TIMEOUT = 45000;
-// time to dump balls into goal
-const unsigned int SCORE_TIME = 7000;
-
-// time to backup and turn for avoiding wall
-const unsigned int WALL_BACKUP_TIME = 2000;
-const float WALL_TURN_TIME = 1000;
 
 const int SPEED = 120;
 
-const int STEEP_ANGLE = 120;
-const int SHALLOW_ANGLE = 180;
+const int PICKUP_ROTATE_ANGLE = 150;
+const int PICKUP_DRIVE_ANGLE = 120;
+const int SCORE_ANGLE = 180;
 
-int numBallsCollected = 0;
 unsigned long startTime = millis();
 
 static Block *maxBlock = new Block();
@@ -71,6 +65,9 @@ void setup() {
   pinMode(RIGHT_WHEEL_PIN_2, OUTPUT);
   pinMode(BRUSH_PIN_1, OUTPUT);
   pinMode(BRUSH_PIN_2, OUTPUT);
+  
+  pinMode(SERVO_PIN, OUTPUT);
+  servo.attach(SERVO_PIN);
 }
 
 void loop() {
@@ -95,8 +92,10 @@ void pickupBalls() {
   Block* block = getMaxBlock(GAME_BALL_SIG);
 
   if (block != NULL) {
-
-
+    
+    servo.write(PICKUP_DRIVE_ANGLE);
+    delay(20);
+    
     Serial.print(block->x);
     Serial.print(" ");
     turnBrushForward();
@@ -128,6 +127,10 @@ void pickupBalls() {
     }
 
   } else {
+    
+    servo.write(PICKUP_ROTATE_ANGLE);
+    delay(20);
+    
     if (millis() - startTime >= SCORE_TIMEOUT) {
       Serial.println("timeout is over");
       scoreBalls();
@@ -143,8 +146,13 @@ void pickupBalls() {
 
 // score balls into goal
 void scoreBalls() {
+  
+  servo.write(SCORE_ANGLE);
+  delay(20);
+  
   delay(1000);
   Serial.println("IN SCORE MODE");
+   
 
   turnBrushOff();
   // rotate until robot finds goal
