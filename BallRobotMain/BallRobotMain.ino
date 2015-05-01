@@ -44,7 +44,7 @@ const int SERVO_PIN = 5;
 // timeout to go to scoring state
 const unsigned long SCORE_TIMEOUT = 45000;
 
-const int SPEED = 120;
+const int SPEED = 135;
 
 const int PICKUP_ROTATE_ANGLE = 150;
 const int PICKUP_DRIVE_ANGLE = 120;
@@ -72,7 +72,7 @@ void setup() {
 
 void loop() {
   pickupBalls();
-  /*Block *block = getMaxBlock(WALL_SIG);
+  /*Block *block = getMaxBlock(GOAL_SIG);
   if (block != NULL) {
     Serial.println(block->x);
     Serial.println(block->width);
@@ -158,15 +158,15 @@ void scoreBalls() {
   // rotate until robot finds goal
   Serial.println("score balls");
   unsigned long scoreStartTime = millis();
-
-  boolean started = false;
+  
+  int forward = 0;
 
   while (true) {
 
-    // exit if still in loop after 60 seconds
-    /*if (millis() - scoreStartTime >= SCORE_TIMEOUT) {
+    // exit if still in loop after timeout
+    if (millis() - scoreStartTime >= SCORE_TIMEOUT) {
       return;
-    }*/
+    }
 
     turnRobotOff();
     delay(350);
@@ -181,13 +181,20 @@ void scoreBalls() {
 
       if (block->x > (MAX_WIDTH / 2.0 - CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
 
-        if (block->width > MAX_WIDTH - 150 && block->height > MAX_HEIGHT - 30) {
+        if (block->width > MAX_WIDTH - 50 && block->height > MAX_HEIGHT - 30) {
           break;
         }
 
         Serial.println("in middle third");
         turnRobotForward();
         delay(500);
+        
+        forward++;
+        
+        if (forward >= 5) {
+          break;
+        }
+        
       } else if (block->x <= (MAX_WIDTH / 2.0 - CENTER_THRESHOLD)) {
         Serial.println("turning left");
         float center = MAX_WIDTH / 2.0;
@@ -198,6 +205,8 @@ void scoreBalls() {
         delay(turnAmount * 250);
         turnRobotForward();
         delay(200);
+        
+        forward = 0;
       } else if (block->x >= (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
         Serial.println("turning right");
         float center = MAX_WIDTH / 2.0;
@@ -208,31 +217,48 @@ void scoreBalls() {
         delay(turnAmount * 250);
         turnRobotForward();
         delay(200);
+        
+        forward = 0;
       }
     }
     else {
       Serial.println("Rotating robot");
       rotateRobot();
       delay(150);
+      
+      forward = 0;
     }
   }
   
   // move back a little
   turnRobotBack();
-  delay(150);
+  delay(200);
   // rotate left first
   rotateRobot();
   delay(500);
-  // check to see if wall is there
+  // check to see if other side of goal is there
   turnRobotOff();
   delay(350);
-  Block* block = getMaxBlock(WALL_SIG);
-  if (block != NULL) {
-    // if so, rotate right twice as much
+  Block* block = getMaxBlock(GOAL_SIG);
+  if (block == NULL) {
+    // if no goal seen, rotate right twice as much
     rotateRobotOther();
     delay(1000); 
   }
+  if (block != NULL) {
+    // if goal is seen, calculate x position and rotate right relatively
+    float turnAmount = ((float)block->x) / MAX_WIDTH;
+    Serial.println(block->x);
+    Serial.println(turnAmount * 500);
+    rotateRobotOther();
+    delay(turnAmount * 500);
+  }
 
+  // go forward a little
+  turnRobotForward();
+  delay(200);
+  
+  // spin brush back and turn back
   delay(50);
   turnRobotOff();
   turnBrushBack();
