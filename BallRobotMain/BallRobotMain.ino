@@ -12,7 +12,7 @@ const int BRUSH_BLOCK_THRESHOLD = 40;
 const int CENTER_THRESHOLD = 30;
 
 // iterations to sample Pixy
-const int PIXY_ITERATIONS = 5;
+const int PIXY_ITERATIONS = 10;
 
 // max width and height of image returned by Pixy
 const int MAX_WIDTH = 320;
@@ -38,8 +38,12 @@ const int RIGHT_WHEEL_PIN_2 = 11;
 const int BRUSH_PIN_1 = 2;
 const int BRUSH_PIN_2 = 3;
 
-// pins for left/right swithes to determine if hitting walls
+// pin for servo
 const int SERVO_PIN = 5;
+
+// trigger and echo pins for PING sensor
+const int TRIGGER_PIN = 12;
+const int ECHO_PIN = 13;
 
 // timeout to go to scoring state
 const unsigned long SCORE_TIMEOUT = 45000;
@@ -47,7 +51,7 @@ const unsigned long SCORE_TIMEOUT = 45000;
 const int SPEED = 135;
 
 const int PICKUP_ROTATE_ANGLE = 150;
-const int PICKUP_DRIVE_ANGLE = 120;
+const int PICKUP_DRIVE_ANGLE = 100;
 const int SCORE_ANGLE = 180;
 
 unsigned long startTime = millis();
@@ -65,14 +69,15 @@ void setup() {
   pinMode(RIGHT_WHEEL_PIN_2, OUTPUT);
   pinMode(BRUSH_PIN_1, OUTPUT);
   pinMode(BRUSH_PIN_2, OUTPUT);
-  
+
   pinMode(SERVO_PIN, OUTPUT);
   servo.attach(SERVO_PIN);
 }
 
 void loop() {
   pickupBalls();
-  /*Block *block = getMaxBlock(GOAL_SIG);
+  /*servo.write(180);
+  Block *block = getMaxBlock(WALL_SIG, 150);
   if (block != NULL) {
     Serial.println(block->x);
     Serial.println(block->width);
@@ -82,6 +87,11 @@ void loop() {
     Serial.println("nothing");
   }
   delay(350);*/
+
+  /*centerRobot();
+  Serial.println("finished one iteration");
+  turnRobotOff();
+  delay(5000);*/
 }
 
 void pickupBalls() {
@@ -89,13 +99,13 @@ void pickupBalls() {
   turnRobotOff();
   delay(150);
 
-  Block* block = getMaxBlock(GAME_BALL_SIG);
+  Block* block = getMaxBlock(GAME_BALL_SIG, PIXY_ITERATIONS);
 
   if (block != NULL) {
-    
+
     servo.write(PICKUP_DRIVE_ANGLE);
     delay(20);
-    
+
     Serial.print(block->x);
     Serial.print(" ");
     turnBrushForward();
@@ -127,10 +137,10 @@ void pickupBalls() {
     }
 
   } else {
-    
+
     servo.write(PICKUP_ROTATE_ANGLE);
     delay(20);
-    
+
     if (millis() - startTime >= SCORE_TIMEOUT) {
       Serial.println("timeout is over");
       scoreBalls();
@@ -144,58 +154,68 @@ void pickupBalls() {
   }
 }
 
+void centerRobot() {
+  for (int i = 0; i < 15; i++) {
+    float distance = getMaxPingDistance();
+    Serial.println(distance);
+    if (distance >= 70) {
+      turnRobotForward();
+      float forwardAmount = (distance - 70.0) / 70.0;
+      Serial.println(forwardAmount);
+      delay(forwardAmount * 2000);
+    }
+    rotateRobot();
+    delay(150);
+  } 
+}
+
 // score balls into goal
 void scoreBalls() {
   
+
   servo.write(SCORE_ANGLE);
   delay(20);
-  
+
   delay(1000);
   Serial.println("IN SCORE MODE");
-   
+
 
   turnBrushOff();
+  
+  centerRobot();
+  
   // rotate until robot finds goal
   Serial.println("score balls");
   unsigned long scoreStartTime = millis();
-  
-  int forward = 0;
 
   while (true) {
-
-    // exit if still in loop after timeout
-    if (millis() - scoreStartTime >= SCORE_TIMEOUT) {
-      return;
-    }
 
     turnRobotOff();
     delay(350);
 
-    Block* block = getMaxBlock(GOAL_SIG);
+    Block* block = getMaxBlock(GOAL_SIG, PIXY_ITERATIONS);
     if (block != NULL) {
 
+      Serial.print("x ");
+      Serial.print(block->x);
       Serial.print("width ");
       Serial.print(block->width);
       Serial.print("height ");
       Serial.println(block->height);
 
-      if (block->x > (MAX_WIDTH / 2.0 - CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
+      if (block->x > (MAX_WIDTH / 2.0 - 60) && block->x < (MAX_WIDTH / 2.0 + 60)) {
 
-        if (block->width > MAX_WIDTH - 50 && block->height > MAX_HEIGHT - 30) {
-          break;
+        float distance = getMaxPingDistance();
+        if (distance <= 45) {
+          break; 
         }
-
+        
         Serial.println("in middle third");
         turnRobotForward();
-        delay(500);
+        delay(300);
         
-        forward++;
-        
-        if (forward >= 5) {
-          break;
-        }
-        
-      } else if (block->x <= (MAX_WIDTH / 2.0 - CENTER_THRESHOLD)) {
+
+      } else if (block->x <= (MAX_WIDTH / 2.0 - 60)) {
         Serial.println("turning left");
         float center = MAX_WIDTH / 2.0;
         float turnAmount = (center - (float)block->x) / center;
@@ -204,10 +224,9 @@ void scoreBalls() {
         turnRobotLeft();
         delay(turnAmount * 250);
         turnRobotForward();
-        delay(200);
-        
-        forward = 0;
-      } else if (block->x >= (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
+        delay(100);
+
+      } else if (block->x >= (MAX_WIDTH / 2.0 + 60)) {
         Serial.println("turning right");
         float center = MAX_WIDTH / 2.0;
         float turnAmount = ((float)block->x - center) / center;
@@ -216,50 +235,22 @@ void scoreBalls() {
         turnRobotRight();
         delay(turnAmount * 250);
         turnRobotForward();
-        delay(200);
-        
-        forward = 0;
+        delay(100);
+
       }
     }
     else {
       Serial.println("Rotating robot");
       rotateRobot();
       delay(150);
-      
-      forward = 0;
+
     }
   }
-  
-  // move back a little
-  turnRobotBack();
-  delay(200);
-  // rotate left first
-  rotateRobot();
-  delay(500);
-  // check to see if other side of goal is there
-  turnRobotOff();
-  delay(350);
-  Block* block = getMaxBlock(GOAL_SIG);
-  if (block == NULL) {
-    // if no goal seen, rotate right twice as much
-    rotateRobotOther();
-    delay(1000); 
-  }
-  if (block != NULL) {
-    // if goal is seen, calculate x position and rotate right relatively
-    float turnAmount = ((float)block->x) / MAX_WIDTH;
-    Serial.println(block->x);
-    Serial.println(turnAmount * 500);
-    rotateRobotOther();
-    delay(turnAmount * 500);
-  }
 
-  // go forward a little
+
+  turnBrushBack();
   turnRobotForward();
-  delay(200);
-  
-  // spin brush back and turn back
-  delay(50);
+  delay(1500);
   turnRobotOff();
   turnBrushBack();
   delay(1000);
@@ -269,12 +260,12 @@ void scoreBalls() {
 }
 
 
-Block* getMaxBlock(int inputSig) {
+Block* getMaxBlock(int inputSig, int iterations) {
   boolean found = false;
 
   unsigned int maxArea = MAX_WIDTH * MAX_HEIGHT;
 
-  for (int i = 0; i < PIXY_ITERATIONS * 50; i++) {
+  for (int i = 0; i < iterations * 50; i++) {
     if (i % 50 == 0) {
       uint16_t blocks = pixy.getBlocks();
       if (blocks) {
@@ -302,6 +293,44 @@ Block* getMaxBlock(int inputSig) {
     return maxBlock;
   }
 }
+
+float getMaxPingDistance() {
+  float maxValue = 0;
+  for (int i = 0; i < 5; i++) {
+    float currentValue = getPingDistance();
+    if (currentValue > maxValue && currentValue <= 200) {
+      maxValue = currentValue; 
+    }
+    delay(20);
+  } 
+  return maxValue;
+}
+
+float getPingDistance() {
+  // establish variables for duration of the ping, 
+  // and the distance result in inches and centimeters:
+  float duration, cm;
+ 
+  // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
+  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
+  pinMode(TRIGGER_PIN, OUTPUT);
+  digitalWrite(TRIGGER_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIGGER_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIGGER_PIN, LOW);
+ 
+  // Read the signal from the sensor: a HIGH pulse whose
+  // duration is the time (in microseconds) from the sending
+  // of the ping to the reception of its echo off of an object.
+  pinMode(ECHO_PIN, INPUT);
+  duration = pulseIn(ECHO_PIN, HIGH);
+ 
+  // convert the time into a distance
+  cm = duration / 29.0 / 2.0;
+  return cm;
+}
+
 
 void turnRobotLeft() {
   analogWrite(LEFT_WHEEL_PIN_1, LOW);
