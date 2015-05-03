@@ -14,6 +14,11 @@ const int CENTER_THRESHOLD = 30;
 // iterations to sample Pixy
 const int PIXY_ITERATIONS = 10;
 
+const int PING_ITERATIONS = 5;
+const float PING_THRESHOLD = 200.0;
+const int PING_CENTER_ITERATIONS = 15;
+const float PING_CENTER_THRESHOLD = 70.0;
+
 // max width and height of image returned by Pixy
 const int MAX_WIDTH = 320;
 const int MAX_HEIGHT = 200;
@@ -155,12 +160,12 @@ void pickupBalls() {
 }
 
 void centerRobot() {
-  for (int i = 0; i < 15; i++) {
+  for (int i = 0; i < PING_CENTER_ITERATIONS; i++) {
     float distance = getMaxPingDistance();
     Serial.println(distance);
-    if (distance >= 70) {
+    if (distance >= PING_CENTER_THRESHOLD) {
       turnRobotForward();
-      float forwardAmount = (distance - 70.0) / 70.0;
+      float forwardAmount = (distance - PING_CENTER_THRESHOLD) / PING_CENTER_THRESHOLD;
       Serial.println(forwardAmount);
       delay(forwardAmount * 2000);
     }
@@ -296,9 +301,9 @@ Block* getMaxBlock(int inputSig, int iterations) {
 
 float getMaxPingDistance() {
   float maxValue = 0;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < PING_ITERATIONS; i++) {
     float currentValue = getPingDistance();
-    if (currentValue > maxValue && currentValue <= 200) {
+    if (currentValue > maxValue && currentValue <= PING_THRESHOLD) {
       maxValue = currentValue; 
     }
     delay(20);
