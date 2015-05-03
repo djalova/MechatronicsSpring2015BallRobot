@@ -5,17 +5,17 @@
 
 Pixy pixy;
 
-// threshold for rotating brush
-const int BRUSH_BLOCK_THRESHOLD = 40;
-
-// threshold for center of vision (may need to change to 10)
-const int CENTER_THRESHOLD = 30;
+// threshold for center of vision
+const int PICKUP_CENTER_THRESHOLD = 30;
+const int SCORE_CENTER_THRESHOLD = 60;
 
 // iterations to sample Pixy
 const int PIXY_ITERATIONS = 10;
 
+// iterations to sample Ping and threshold
 const int PING_ITERATIONS = 5;
 const float PING_THRESHOLD = 200.0;
+// iterations to run centering algorithm and threshold for center
 const int PING_CENTER_ITERATIONS = 15;
 const float PING_CENTER_THRESHOLD = 70.0;
 
@@ -115,11 +115,11 @@ void pickupBalls() {
     Serial.print(" ");
     turnBrushForward();
 
-    if (block->x > (MAX_WIDTH / 2.0 - CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
+    if (block->x > (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + PICKUP_CENTER_THRESHOLD)) {
       Serial.println("in middle third");
       turnRobotForward();
       delay(750);
-    } else if (block->x <= (MAX_WIDTH / 2.0 - CENTER_THRESHOLD)) {
+    } else if (block->x <= (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD)) {
       Serial.println("turning left");
       float center = MAX_WIDTH / 2.0;
       float turnAmount = (center - (float)block->x) / center;
@@ -129,7 +129,7 @@ void pickupBalls() {
       delay(turnAmount * 200);
       turnRobotForward();
       delay(100);
-    } else if (block->x >= (MAX_WIDTH / 2.0 + CENTER_THRESHOLD)) {
+    } else if (block->x >= (MAX_WIDTH / 2.0 + PICKUP_CENTER_THRESHOLD)) {
       Serial.println("turning right");
       float center = MAX_WIDTH / 2.0;
       float turnAmount = ((float)block->x - center) / center;
@@ -208,7 +208,7 @@ void scoreBalls() {
       Serial.print("height ");
       Serial.println(block->height);
 
-      if (block->x > (MAX_WIDTH / 2.0 - 60) && block->x < (MAX_WIDTH / 2.0 + 60)) {
+      if (block->x > (MAX_WIDTH / 2.0 - SCORE_CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + SCORE_CENTER_THRESHOLD)) {
 
         float distance = getMaxPingDistance();
         if (distance <= 45) {
@@ -220,7 +220,7 @@ void scoreBalls() {
         delay(300);
         
 
-      } else if (block->x <= (MAX_WIDTH / 2.0 - 60)) {
+      } else if (block->x <= (MAX_WIDTH / 2.0 - SCORE_CENTER_THRESHOLD)) {
         Serial.println("turning left");
         float center = MAX_WIDTH / 2.0;
         float turnAmount = (center - (float)block->x) / center;
@@ -231,7 +231,7 @@ void scoreBalls() {
         turnRobotForward();
         delay(100);
 
-      } else if (block->x >= (MAX_WIDTH / 2.0 + 60)) {
+      } else if (block->x >= (MAX_WIDTH / 2.0 + SCORE_CENTER_THRESHOLD)) {
         Serial.println("turning right");
         float center = MAX_WIDTH / 2.0;
         float turnAmount = ((float)block->x - center) / center;
