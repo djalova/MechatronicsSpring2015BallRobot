@@ -5,6 +5,10 @@
 
 Pixy pixy;
 
+// operating states
+typedef enum {STANDBY, PICKUP, SCORING, DEBUG} mode;
+mode OP_MODE = STANDBY;
+
 // threshold for center of vision
 const int PICKUP_CENTER_THRESHOLD = 30;
 const int SCORE_CENTER_THRESHOLD = 60;
@@ -30,6 +34,7 @@ const int FOUL_BALL_SIG = 3;
 // signature of goal and wall
 const int GOAL_SIG = 2;
 const int WALL_SIG = 4;
+const int HAND_OFF_SIG = 5;
 
 //NOTE: AVOID USING PINS 50-53 (FOR MEGA). These pins are ICSP and will be used up by the PixyCam.
 //NOTE: AVOID USING PINS 10-13 (FOR UNO).
@@ -80,23 +85,44 @@ void setup() {
 }
 
 void loop() {
-  pickupBalls();
-  /*servo.write(180);
-  Block *block = getMaxBlock(WALL_SIG, 150);
-  if (block != NULL) {
-    Serial.println(block->x);
-    Serial.println(block->width);
-    Serial.println(block->height);
-    Serial.println("----");
-  } else {
-    Serial.println("nothing");
-  }
-  delay(350);*/
 
-  /*centerRobot();
-  Serial.println("finished one iteration");
+  if (OP_MODE == STANDBY) {
+    Serial.println("Standby Mode");
+    standby();
+  }
+
+  else if (OP_MODE == PICKUP) {
+    Serial.println("Pickup Mode");
+    pickupBalls();
+  }
+
+  else if (OP_MODE == DEBUG) {
+    /*servo.write(180);
+    Block *block = getMaxBlock(WALL_SIG, 150);
+    if (block != NULL) {
+      Serial.println(block->x);
+      Serial.println(block->width);
+      Serial.println(block->height);
+      Serial.println("----");
+    } else {
+      Serial.println("nothing");
+    }
+    delay(350);*/
+
+    /*centerRobot();
+    Serial.println("finished one iteration");
+    turnRobotOff();
+    delay(5000);*/
+  }
+}
+
+void standby() {
   turnRobotOff();
-  delay(5000);*/
+  Block* block = getMaxBlock(HAND_OFF_SIG, PIXY_ITERATIONS);
+
+  if (block != NULL) {
+    OP_MODE = PICKUP;
+  }
 }
 
 void pickupBalls() {
@@ -171,12 +197,12 @@ void centerRobot() {
     }
     rotateRobot();
     delay(150);
-  } 
+  }
 }
 
 // score balls into goal
 void scoreBalls() {
-  
+
 
   servo.write(SCORE_ANGLE);
   delay(20);
@@ -186,9 +212,9 @@ void scoreBalls() {
 
 
   turnBrushOff();
-  
+
   centerRobot();
-  
+
   // rotate until robot finds goal
   Serial.println("score balls");
   unsigned long scoreStartTime = millis();
@@ -212,13 +238,13 @@ void scoreBalls() {
 
         float distance = getMaxPingDistance();
         if (distance <= 45) {
-          break; 
+          break;
         }
-        
+
         Serial.println("in middle third");
         turnRobotForward();
         delay(300);
-        
+
 
       } else if (block->x <= (MAX_WIDTH / 2.0 - SCORE_CENTER_THRESHOLD)) {
         Serial.println("turning left");
@@ -304,18 +330,18 @@ float getMaxPingDistance() {
   for (int i = 0; i < PING_ITERATIONS; i++) {
     float currentValue = getPingDistance();
     if (currentValue > maxValue && currentValue <= PING_THRESHOLD) {
-      maxValue = currentValue; 
+      maxValue = currentValue;
     }
     delay(20);
-  } 
+  }
   return maxValue;
 }
 
 float getPingDistance() {
-  // establish variables for duration of the ping, 
+  // establish variables for duration of the ping,
   // and the distance result in inches and centimeters:
   float duration, cm;
- 
+
   // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
   // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
   pinMode(TRIGGER_PIN, OUTPUT);
@@ -324,13 +350,13 @@ float getPingDistance() {
   digitalWrite(TRIGGER_PIN, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIGGER_PIN, LOW);
- 
+
   // Read the signal from the sensor: a HIGH pulse whose
   // duration is the time (in microseconds) from the sending
   // of the ping to the reception of its echo off of an object.
   pinMode(ECHO_PIN, INPUT);
   duration = pulseIn(ECHO_PIN, HIGH);
- 
+
   // convert the time into a distance
   cm = duration / 29.0 / 2.0;
   return cm;
