@@ -88,7 +88,10 @@ void loop() {
 
   if (OP_MODE == STANDBY) {
     Serial.println("Standby Mode");
-    standby();
+    if (checkForFlag() == true) {
+      OP_MODE == PICKUP;
+      centerRobot();
+    }
   }
 
   else if (OP_MODE == PICKUP) {
@@ -116,12 +119,12 @@ void loop() {
   }
 }
 
-void standby() {
+boolean checkForFlag() {
   turnRobotOff();
   Block* block = getMaxBlock(HAND_OFF_SIG, PIXY_ITERATIONS);
 
-  if (block != NULL) {
-    OP_MODE = PICKUP;
+  if (block != NULL) {    
+    return true;
   }
 }
 
