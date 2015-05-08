@@ -57,14 +57,16 @@ const int ECHO_PIN = 13;
 
 // timeout to go to scoring state
 const unsigned long SCORE_TIMEOUT = 45000;
+const unsigned long ROTATE_TIMEOUT = 10000;
 
-const int SPEED = 135;
+const int SPEED = 120;
 
 const int PICKUP_ROTATE_ANGLE = 150;
 const int PICKUP_DRIVE_ANGLE = 100;
 const int SCORE_ANGLE = 180;
 
-unsigned long startTime = millis();
+unsigned long scoreTimeoutStartTime = millis();
+unsigned long rotateTimeoutStartTime = millis();
 
 static Block *maxBlock = new Block();
 
@@ -97,6 +99,7 @@ void loop() {
   }
 
   else if (OP_MODE == DEBUG) {
+    centerRobot();
     /*servo.write(180);
     Block *block = getMaxBlock(WALL_SIG, 150);
     if (block != NULL) {
@@ -167,16 +170,24 @@ void pickupBalls() {
       delay(100);
     }
 
+    rotateTimeoutStartTime = millis();
   } else {
 
     servo.write(PICKUP_ROTATE_ANGLE);
     delay(20);
 
-    if (millis() - startTime >= SCORE_TIMEOUT) {
-      Serial.println("timeout is over");
+    if (millis() - scoreTimeoutStartTime >= SCORE_TIMEOUT) {
+      Serial.println("score timeout is over");
       scoreBalls();
-      startTime = millis();
+      scoreTimeoutStartTime = millis();
     }
+    
+    if (millis() - rotateTimeoutStartTime >= ROTATE_TIMEOUT) {
+      Serial.println("rotate timeout is over");
+      scoreBalls();
+      rotateTimeoutStartTime = millis();
+    }
+    
     // Robot should rotate and scan for balls
     rotateRobot();
     turnBrushOff();
