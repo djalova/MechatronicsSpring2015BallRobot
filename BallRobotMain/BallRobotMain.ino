@@ -7,7 +7,12 @@ Pixy pixy;
 
 // operating states
 typedef enum {STANDBY, PICKUP, SCORING, DEBUG} mode;
+
+// MODIFY THIS FOR STARTING STATE
 mode OP_MODE = STANDBY;
+
+// Keeps track of if robot is rotating to find balls
+boolean hasTarget = false;
 
 // threshold for center of vision
 const int PICKUP_CENTER_THRESHOLD = 30;
@@ -65,8 +70,8 @@ const int PICKUP_ROTATE_ANGLE = 150;
 const int PICKUP_DRIVE_ANGLE = 100;
 const int SCORE_ANGLE = 180;
 
-unsigned long scoreTimeoutStartTime = millis();
-unsigned long rotateTimeoutStartTime = millis();
+unsigned long scoreTimeoutStartTime;
+unsigned long rotateTimeoutStartTime;
 
 static Block *maxBlock = new Block();
 
@@ -91,14 +96,36 @@ void loop() {
   if (OP_MODE == STANDBY) {
     Serial.println("Standby Mode");
     if (checkForFlag() == true) {
-      OP_MODE == PICKUP;
+      OP_MODE = PICKUP;
       centerRobot();
+      scoreTimeoutStartTime = millis();
+      rotateTimeoutStartTime = millis();
     }
   }
 
   else if (OP_MODE == PICKUP) {
     Serial.println("Pickup Mode");
     pickupBalls();
+    
+    if (!hasTarget) {
+      if (millis() - rotateTimeoutStartTime >= ROTATE_TIMEOUT) {
+        Serial.println("rotate timeout is over");
+        OP_MODE = SCORING;
+        rotateTimeoutStartTime = millis();
+      }      
+      if (millis() - scoreTimeoutStartTime >= SCORE_TIMEOUT) {
+        Serial.println("score timeout is over");
+        OP_MODE = SCORING;
+        scoreTimeoutStartTime = millis();
+      }            
+    }    
+  }
+  
+  else if (OP_MODE == SCORING) {   
+    scoreBalls();
+    OP_MODE = PICKUP;
+    scoreTimeoutStartTime = millis();
+    rotateTimeoutStartTime = millis();
   }
 
   else if (OP_MODE == DEBUG) {
@@ -126,7 +153,7 @@ boolean checkForFlag() {
   turnRobotOff();
   Block* block = getMaxBlock(HAND_OFF_SIG, PIXY_ITERATIONS);
 
-  if (block != NULL) {    
+  if (block != NULL) {
     return true;
   }
 }
@@ -139,7 +166,7 @@ void pickupBalls() {
   Block* block = getMaxBlock(GAME_BALL_SIG, PIXY_ITERATIONS);
 
   if (block != NULL) {
-
+    hasTarget = true;
     servo.write(PICKUP_DRIVE_ANGLE);
     delay(20);
 
@@ -172,25 +199,13 @@ void pickupBalls() {
       turnRobotForward();
       delay(100);
     }
-
-    rotateTimeoutStartTime = millis();
+    
+    rotateTimeoutStartTime = millis();    
   } else {
-
+    hasTarget = false;
     servo.write(PICKUP_ROTATE_ANGLE);
     delay(20);
 
-    if (millis() - scoreTimeoutStartTime >= SCORE_TIMEOUT) {
-      Serial.println("score timeout is over");
-      scoreBalls();
-      scoreTimeoutStartTime = millis();
-    }
-    
-    if (millis() - rotateTimeoutStartTime >= ROTATE_TIMEOUT) {
-      Serial.println("rotate timeout is over");
-      scoreBalls();
-      rotateTimeoutStartTime = millis();
-    }
-    
     // Robot should rotate and scan for balls
     rotateRobot();
     turnBrushOff();
@@ -217,13 +232,10 @@ void centerRobot() {
 // score balls into goal
 void scoreBalls() {
 
-
   servo.write(SCORE_ANGLE);
   delay(20);
-
   delay(1000);
   Serial.println("IN SCORE MODE");
-
 
   turnBrushOff();
 
@@ -259,7 +271,6 @@ void scoreBalls() {
         turnRobotForward();
         delay(300);
 
-
       } else if (block->x <= (MAX_WIDTH / 2.0 - SCORE_CENTER_THRESHOLD)) {
         Serial.println("turning left");
         float center = MAX_WIDTH / 2.0;
@@ -292,7 +303,6 @@ void scoreBalls() {
     }
   }
 
-
   turnBrushBack();
   turnRobotForward();
   delay(1500);
@@ -301,9 +311,7 @@ void scoreBalls() {
   delay(1000);
   turnRobotBack();
   delay(1500);
-
 }
-
 
 Block* getMaxBlock(int inputSig, int iterations) {
   boolean found = false;
