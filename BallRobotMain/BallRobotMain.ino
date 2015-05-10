@@ -9,10 +9,11 @@ Pixy pixy;
 typedef enum {STANDBY, PICKUP, SCORING, DEBUG} mode;
 
 // MODIFY THIS FOR STARTING STATE
-mode OP_MODE = STANDBY;
+mode OP_MODE = PICKUP;
 
 // Keeps track of if robot is rotating to find balls
 boolean hasTarget = false;
+boolean prevForward = false;
 
 // threshold for center of vision
 const int PICKUP_CENTER_THRESHOLD = 30;
@@ -178,6 +179,8 @@ void pickupBalls() {
       Serial.println("in middle third");
       turnRobotForward();
       delay(750);
+      
+      prevForward = true;
     } else if (block->x <= (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD)) {
       Serial.println("turning left");
       float center = MAX_WIDTH / 2.0;
@@ -188,6 +191,8 @@ void pickupBalls() {
       delay(turnAmount * 200);
       turnRobotForward();
       delay(100);
+      
+      prevForward = false;
     } else if (block->x >= (MAX_WIDTH / 2.0 + PICKUP_CENTER_THRESHOLD)) {
       Serial.println("turning right");
       float center = MAX_WIDTH / 2.0;
@@ -198,10 +203,20 @@ void pickupBalls() {
       delay(turnAmount * 200);
       turnRobotForward();
       delay(100);
+      
+      prevForward = false;
     }
     
     rotateTimeoutStartTime = millis();    
   } else {
+    
+    if (prevForward) {
+      turnBrushForward();
+      turnRobotForward();
+      delay(500);
+      prevForward = false; 
+    }
+    
     hasTarget = false;
     servo.write(PICKUP_ROTATE_ANGLE);
     delay(20);
