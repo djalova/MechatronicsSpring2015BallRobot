@@ -117,22 +117,41 @@ void loop() {
   else if (OP_MODE == PICKUP) {
     Serial.println("Pickup Mode");
     pickupBalls();
-    
+
     if (!hasTarget) {
       if (millis() - rotateTimeoutStartTime >= ROTATE_TIMEOUT) {
         Serial.println("rotate timeout is over");
-        OP_MODE = SCORING;
+        //OP_MODE = SCORING;
         rotateTimeoutStartTime = millis();
-      }      
+      }
       if (millis() - scoreTimeoutStartTime >= SCORE_TIMEOUT) {
         Serial.println("score timeout is over");
-        OP_MODE = SCORING;
+        //OP_MODE = SCORING;
         scoreTimeoutStartTime = millis();
-      }            
-    }    
+      }
+    }
+
+    if (millis() - wallCheckTimeoutStartTime >= WALL_CHECK_TIMEOUT) {
+      distanceToWall = getMaxPingDistance();
+      /*
+      Serial.print("Curr distance to wall: ");
+      Serial.println(distanceToWall);
+      
+      Serial.print("Prev distance to wall: ");
+      Serial.println(prevDistanceToWall);
+      */     
+      if ( distanceToWall <= prevDistanceToWall + WALL_CHECK_RANGE && distanceToWall >= prevDistanceToWall - WALL_CHECK_RANGE
+           && distanceToWall <  WALL_CHECK_THRESHOLD) {
+        Serial.println("Stuck at wall. Attempting to recover.");
+        //TODO Add in code to recover
+      }
+      prevDistanceToWall = distanceToWall;
+      wallCheckTimeoutStartTime = millis();
+    }
+
   }
-  
-  else if (OP_MODE == SCORING) {   
+
+  else if (OP_MODE == SCORING) {
     scoreBalls();
     OP_MODE = PICKUP;
     scoreTimeoutStartTime = millis();
@@ -144,7 +163,7 @@ void loop() {
     servo.write(180);
     Block *block = getMaxBlock(GAME_BALL_SIG, PIXY_ITERATIONS);
     if (block != NULL) {
-            Serial.println("--GAME BALL--");
+      Serial.println("--GAME BALL--");
       Serial.println(block->x);
       Serial.println(block->width);
       Serial.println(block->height);
@@ -153,7 +172,7 @@ void loop() {
       Serial.println("nothing");
     }
     delay(350);
-    
+
     block = getMaxBlock(FOUL_BALL_SIG, PIXY_ITERATIONS);
     if (block != NULL) {
       Serial.println("--FOUL BALL--");
@@ -189,7 +208,7 @@ void pickupBalls() {
 
   Block* block = getMaxBlock(GAME_BALL_SIG, PIXY_ITERATIONS);
   delay(150);
-  
+
   Block* bad_block = getMaxBlock(FOUL_BALL_SIG, PIXY_ITERATIONS);
 
   if (block != NULL) {
