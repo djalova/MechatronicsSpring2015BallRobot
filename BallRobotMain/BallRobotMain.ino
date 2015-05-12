@@ -36,7 +36,7 @@ const int MAX_HEIGHT = 200;
 // signatures of game and foul balls
 // game ball is green, foul ball is blue
 const int GAME_BALL_SIG = 1;
-const int FOUL_BALL_SIG = 3;
+const int FOUL_BALL_SIG = 6;
 // signature of goal and wall
 const int GOAL_SIG = 2;
 const int WALL_SIG = 4;
@@ -130,10 +130,11 @@ void loop() {
   }
 
   else if (OP_MODE == DEBUG) {
-    centerRobot();
-    /*servo.write(180);
-    Block *block = getMaxBlock(WALL_SIG, 150);
+
+    servo.write(180);
+    Block *block = getMaxBlock(GAME_BALL_SIG, PIXY_ITERATIONS);
     if (block != NULL) {
+            Serial.println("--GAME BALL--");
       Serial.println(block->x);
       Serial.println(block->width);
       Serial.println(block->height);
@@ -141,7 +142,19 @@ void loop() {
     } else {
       Serial.println("nothing");
     }
-    delay(350);*/
+    delay(350);
+    
+    block = getMaxBlock(FOUL_BALL_SIG, PIXY_ITERATIONS);
+    if (block != NULL) {
+      Serial.println("--FOUL BALL--");
+      Serial.println(block->x);
+      Serial.println(block->width);
+      Serial.println(block->height);
+      Serial.println("----");
+    } else {
+      Serial.println("nothing");
+    }
+    delay(350);
 
     /*centerRobot();
     Serial.println("finished one iteration");
@@ -165,22 +178,59 @@ void pickupBalls() {
   delay(150);
 
   Block* block = getMaxBlock(GAME_BALL_SIG, PIXY_ITERATIONS);
+  delay(150);
+  
+  Block* bad_block = getMaxBlock(FOUL_BALL_SIG, PIXY_ITERATIONS);
 
   if (block != NULL) {
     hasTarget = true;
     servo.write(PICKUP_DRIVE_ANGLE);
     delay(20);
 
-    Serial.print(block->x);
-    Serial.print(" ");
+    Serial.println(block->x);
+
     turnBrushForward();
 
     if (block->x > (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + PICKUP_CENTER_THRESHOLD)) {
-      Serial.println("in middle third");
-      turnRobotForward();
-      delay(750);
+      Serial.print("Bad block width:");           
+      Serial.println(bad_block->width);
+
+      Serial.print("Bad block height:");           
+      Serial.println(bad_block->height);
       
-      prevForward = true;
+      Serial.print("Block size:");           
+      Serial.println(block->width * block->height);
+      
+      if (bad_block == NULL || bad_block->x < (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD) ||
+          bad_block->x > (MAX_WIDTH / 2.0 + PICKUP_CENTER_THRESHOLD) || (block->width * block->height > bad_block->width * bad_block->height) ) {
+        Serial.println("in middle third");
+        turnRobotForward();
+        delay(750);
+        prevForward = true;
+      }
+
+      else if ( block->x < bad_block->x && bad_block->x > (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD)) {
+        // Foul ball is left of game ball, turn until bad block is outside of threshhold
+        Serial.println("Avoid left foul ball");
+        float center = MAX_WIDTH / 2.0;
+        float turnAmount = (center - (float)block->x) / center;
+        turnRobotRight();
+        delay(turnAmount * 200);
+        turnRobotForward();
+        delay(100);
+      }
+
+      else if ( block->x > bad_block->x && bad_block->x < (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD)) {
+        // Foul ball is right of game ball, turn until bad block is outside of threshhold
+        Serial.println("Avoid right ball");
+        float center = MAX_WIDTH / 2.0;
+        float turnAmount = (center - (float)block->x) / center;
+        turnRobotLeft();
+        delay(turnAmount * 200);
+        turnRobotForward();
+        delay(100);
+      }
+
     } else if (block->x <= (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD)) {
       Serial.println("turning left");
       float center = MAX_WIDTH / 2.0;
@@ -191,7 +241,7 @@ void pickupBalls() {
       delay(turnAmount * 200);
       turnRobotForward();
       delay(100);
-      
+
       prevForward = false;
     } else if (block->x >= (MAX_WIDTH / 2.0 + PICKUP_CENTER_THRESHOLD)) {
       Serial.println("turning right");
@@ -203,20 +253,20 @@ void pickupBalls() {
       delay(turnAmount * 200);
       turnRobotForward();
       delay(100);
-      
+
       prevForward = false;
     }
-    
-    rotateTimeoutStartTime = millis();    
+
+    rotateTimeoutStartTime = millis();
   } else {
-    
+
     if (prevForward) {
       turnBrushForward();
       turnRobotForward();
       delay(500);
-      prevForward = false; 
+      prevForward = false;
     }
-    
+
     hasTarget = false;
     servo.write(PICKUP_ROTATE_ANGLE);
     delay(20);
