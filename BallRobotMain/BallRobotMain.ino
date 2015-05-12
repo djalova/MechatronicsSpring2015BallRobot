@@ -7,9 +7,11 @@ Pixy pixy;
 
 // operating states
 typedef enum {STANDBY, PICKUP, SCORING, DEBUG} mode;
+typedef enum {NONE, FORWARD, LEFT, RIGHT, BACK} movement;
 
 // MODIFY THIS FOR STARTING STATE
 mode OP_MODE = PICKUP;
+movement LAST_MOVE = NONE;
 
 // Keeps track of if robot is rotating to find balls
 boolean hasTarget = false;
@@ -68,7 +70,7 @@ const unsigned long ROTATE_TIMEOUT = 10000;
 // timeout to determine if stuck
 const unsigned long WALL_CHECK_TIMEOUT = 2000;
 
-const int SPEED = 120;
+const int SPEED = 150;
 
 const int PICKUP_ROTATE_ANGLE = 150;
 const int PICKUP_DRIVE_ANGLE = 100;
@@ -115,8 +117,7 @@ void loop() {
   }
 
   else if (OP_MODE == PICKUP) {
-    Serial.println("Pickup Mode");
-    pickupBalls();
+    Serial.println("Pickup Mode");    
 
     if (!hasTarget) {
       if (millis() - rotateTimeoutStartTime >= ROTATE_TIMEOUT) {
@@ -133,21 +134,24 @@ void loop() {
 
     if (millis() - wallCheckTimeoutStartTime >= WALL_CHECK_TIMEOUT) {
       distanceToWall = getMaxPingDistance();
-      /*
+      
       Serial.print("Curr distance to wall: ");
       Serial.println(distanceToWall);
-      
+
       Serial.print("Prev distance to wall: ");
       Serial.println(prevDistanceToWall);
-      */     
+     
       if ( distanceToWall <= prevDistanceToWall + WALL_CHECK_RANGE && distanceToWall >= prevDistanceToWall - WALL_CHECK_RANGE
            && distanceToWall <  WALL_CHECK_THRESHOLD) {
         Serial.println("Stuck at wall. Attempting to recover.");
         //TODO Add in code to recover
+        //wallRecovery();
       }
       prevDistanceToWall = distanceToWall;
       wallCheckTimeoutStartTime = millis();
     }
+ 
+    pickupBalls();
 
   }
 
@@ -306,6 +310,7 @@ void pickupBalls() {
     turnBrushOff();
     Serial.println("Rotating robot");
     delay(150);
+    turnRobotOff();
   }
 }
 
@@ -442,6 +447,31 @@ Block* getMaxBlock(int inputSig, int iterations) {
   }
 }
 
+void wallRecovery() {
+
+  if (LAST_MOVE == FORWARD) {
+    turnRobotBack();
+    delay(300);
+  }
+  else if (LAST_MOVE == LEFT) {
+    turnRobotRight();
+    delay(100);
+    turnRobotBack();
+    delay(300);
+    turnRobotLeft();
+    delay(100);
+  }
+  else if (LAST_MOVE == RIGHT) {
+    turnRobotLeft();
+    delay(100);
+    turnRobotBack();
+    delay(300);
+    turnRobotRight();
+    delay(100);
+  }
+
+}
+
 float getMaxPingDistance() {
   float maxValue = 0;
   for (int i = 0; i < PING_ITERATIONS; i++) {
@@ -485,6 +515,7 @@ void turnRobotLeft() {
   analogWrite(LEFT_WHEEL_PIN_2, SPEED);
   analogWrite(RIGHT_WHEEL_PIN_1, SPEED);
   analogWrite(RIGHT_WHEEL_PIN_2, LOW);
+  LAST_MOVE = LEFT;
 }
 
 void turnRobotRight() {
@@ -492,6 +523,7 @@ void turnRobotRight() {
   analogWrite(LEFT_WHEEL_PIN_2, LOW);
   analogWrite(RIGHT_WHEEL_PIN_1, LOW);
   analogWrite(RIGHT_WHEEL_PIN_2, SPEED);
+  LAST_MOVE = RIGHT;
 }
 
 void turnRobotForward() {
@@ -499,6 +531,7 @@ void turnRobotForward() {
   analogWrite(LEFT_WHEEL_PIN_2, LOW);
   analogWrite(RIGHT_WHEEL_PIN_1, SPEED);
   analogWrite(RIGHT_WHEEL_PIN_2, LOW);
+  LAST_MOVE = FORWARD;
 }
 
 void turnRobotBack() {
@@ -506,6 +539,7 @@ void turnRobotBack() {
   analogWrite(LEFT_WHEEL_PIN_2, SPEED);
   analogWrite(RIGHT_WHEEL_PIN_1, LOW);
   analogWrite(RIGHT_WHEEL_PIN_2, SPEED);
+  LAST_MOVE = BACK;
 }
 
 void turnRobotOff() {
