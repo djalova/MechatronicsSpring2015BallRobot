@@ -65,6 +65,9 @@ const int ECHO_PIN = 13;
 const unsigned long SCORE_TIMEOUT = 45000;
 const unsigned long ROTATE_TIMEOUT = 10000;
 
+// timeout to determine if stuck
+const unsigned long WALL_CHECK_TIMEOUT = 2000;
+
 const int SPEED = 120;
 
 const int PICKUP_ROTATE_ANGLE = 150;
@@ -74,7 +77,14 @@ const int SCORE_ANGLE = 180;
 unsigned long scoreTimeoutStartTime;
 unsigned long rotateTimeoutStartTime;
 
-static Block *maxBlock = new Block();
+// Used to check if stuck
+unsigned long wallCheckTimeoutStartTime;
+float distanceToWall;
+float prevDistanceToWall = 0;
+const float  WALL_CHECK_THRESHOLD = 10.0;
+const float WALL_CHECK_RANGE = 3.0;
+
+//static Block *maxBlock = new Block();
 
 Servo servo;
 
@@ -188,19 +198,20 @@ void pickupBalls() {
     delay(20);
 
     Serial.println(block->x);
+    Serial.println(bad_block->x);
 
     turnBrushForward();
 
     if (block->x > (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD) && block->x < (MAX_WIDTH / 2.0 + PICKUP_CENTER_THRESHOLD)) {
-      Serial.print("Bad block width:");           
+      Serial.print("Bad block width:");
       Serial.println(bad_block->width);
 
-      Serial.print("Bad block height:");           
+      Serial.print("Bad block height:");
       Serial.println(bad_block->height);
-      
-      Serial.print("Block size:");           
+
+      Serial.print("Block size:");
       Serial.println(block->width * block->height);
-      
+
       if (bad_block == NULL || bad_block->x < (MAX_WIDTH / 2.0 - PICKUP_CENTER_THRESHOLD) ||
           bad_block->x > (MAX_WIDTH / 2.0 + PICKUP_CENTER_THRESHOLD) || (block->width * block->height > bad_block->width * bad_block->height) ) {
         Serial.println("in middle third");
@@ -380,7 +391,7 @@ void scoreBalls() {
 
 Block* getMaxBlock(int inputSig, int iterations) {
   boolean found = false;
-
+  Block* maxBlock = new Block();
   unsigned int maxArea = MAX_WIDTH * MAX_HEIGHT;
 
   for (int i = 0; i < iterations * 50; i++) {
