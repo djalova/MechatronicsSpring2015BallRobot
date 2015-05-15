@@ -73,6 +73,8 @@ const unsigned long SCORE_TIMEOUT = 45000;
 const unsigned long ROTATE_TIMEOUT = 10000;
 // timeout to check if stuck on wall
 const unsigned long WALL_CHECK_TIMEOUT = 2000;
+// timeout to start robot if relay failed
+const unsigned long STANDBY_TIMEOUT = 20000;
 
 // speed to turn drive wheels
 const int SPEED = 150;
@@ -87,7 +89,8 @@ const int SCORE_ANGLE = 180;
 // start times for scoring and rotating timeouts
 unsigned long scoreTimeoutStartTime;
 unsigned long rotateTimeoutStartTime;
-
+// start time for timeout if relay failed
+unsigned long standbyTimeoutStartTime;
 // used to check if stuck on side of wall
 unsigned long wallCheckTimeoutStartTime;
 float distanceToWall;
@@ -111,15 +114,16 @@ void setup() {
   pinMode(BRUSH_PIN_2, OUTPUT);
   pinMode(SERVO_PIN, OUTPUT);
   servo.attach(SERVO_PIN);
+  standbyTimeoutStartTime = millis();
 }
 
 void loop() {
 
   if (OP_MODE == STANDBY) {
     Serial.println("Standby Mode");
-    // if in standby, check for flag
+    // if in standby, check for flag or if 20-sec timeout is over
     // then change to pickup state, move backwards, and start timeouts
-    if (checkForFlag() == true) {
+    if (checkForFlag() == true || millis() - standbyTimeoutStartTime >= STANDBY_TIMEOUT) {
       OP_MODE = PICKUP;
       turnRobotBack();
       delay(1500);
@@ -416,7 +420,9 @@ void scoreBalls() {
     delay(350);
     Block* block = getMaxBlock(GOAL_SIG, PIXY_ITERATIONS);
     
-    if (block != NULL) {
+    // only detect goal if it's actually the goal
+    // (small width/height could be a speck of the pipe bot)
+    if (block != NULL && block->width > 10 && block->height > 10) {
 
       // detected goal
       Serial.print("x ");
