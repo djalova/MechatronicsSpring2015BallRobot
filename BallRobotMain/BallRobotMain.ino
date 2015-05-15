@@ -414,6 +414,11 @@ void scoreBalls() {
   unsigned long scoreStartTime = millis();
 
   while (true) {
+    
+    // exit if we can't score in 45 secs
+    if (millis() - scoreStartTime >= SCORE_TIMEOUT) {
+      return; 
+    }
 
     // get goal signature reading from Pixy
     turnRobotOff();
